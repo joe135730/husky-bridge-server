@@ -2,13 +2,18 @@ import * as dao from "./dao.js";
 export default function UserRoutes(app) {
   // Sign in
   const signin = async (req, res) => {
-    const { username, password } = req.body;
-    const currentUser = await dao.findUserByCredentials(username, password);
-    if (currentUser) {
-      req.session["currentUser"] = currentUser;
-      res.json(currentUser);
-    } else {
-      res.status(401).json({ message: "Unable to login. Try again later." });
+    try {
+      const { email, password } = req.body;
+      const currentUser = await dao.findUserByCredentials(email, password);
+      if (currentUser) {
+        req.session["currentUser"] = currentUser;
+        res.json(currentUser);
+      } else {
+        res.status(401).json({ message: "Invalid credentials" });
+      }
+    } catch (error) {
+      console.error("Signin error:", error);
+      res.status(500).json({ message: "Error during signin" });
     }
   };
   app.post("/api/users/signin", signin);
@@ -41,6 +46,31 @@ export default function UserRoutes(app) {
     }
   };
   app.post("/api/users/signup", signup);
+
+  // Profile - Get current user from session
+  const profile = async (req, res) => {
+    const currentUser = req.session["currentUser"];
+    if (currentUser) {
+      // Update user with latest data from database
+      try {
+        const user = await dao.findUserById(currentUser._id);
+        res.json(user);
+      } catch (error) {
+        console.error("Profile error:", error);
+        res.status(404).json({ message: "User not found" });
+      }
+    } else {
+      res.sendStatus(403);
+    }
+  };
+  app.post("/api/users/profile", profile);
+
+  // Sign out
+  const signout = (req, res) => {
+    req.session.destroy();
+    res.sendStatus(200);
+  };
+  app.post("/api/users/signout", signout);
 
   // Get all users
   const findAllUsers = async (req, res) => {
