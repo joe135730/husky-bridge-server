@@ -15,14 +15,30 @@ export default function UserRoutes(app) {
 
   // Sign up
   const signup = async (req, res) => {
-    const user = await dao.findUserByEmail(req.body.email);
-    if (user) {
-      res.status(400).json({ message: "Username already taken" });
-      return;
+    try {
+      // Validate request body
+      if (!req.body || !req.body.email || !req.body.password) {
+        return res.status(400).json({ 
+          message: "Email and password are required" 
+        });
+      }
+
+      const user = await dao.findUserByEmail(req.body.email);
+      if (user) {
+        return res.status(400).json({ 
+          message: "Email already registered" 
+        });
+      }
+
+      const currentUser = await dao.createUser(req.body);
+      req.session["currentUser"] = currentUser;
+      res.json(currentUser);
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ 
+        message: "Error creating user" 
+      });
     }
-    const currentUser = await dao.createUser(req.body);
-    req.session["currentUser"] = currentUser;
-    res.json(currentUser);
   };
   app.post("/api/users/signup", signup);
 
