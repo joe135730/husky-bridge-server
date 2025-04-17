@@ -85,4 +85,52 @@ export default function UserRoutes(app) {
     res.json(user);
   };
   app.post("/api/users", createUser);
+
+  // Update User
+  const updateUser = async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Verify if the user exists first
+      const existingUser = await dao.findUserById(id);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If updating password, verify current password
+      if (req.body.password) {
+        const currentUser = await dao.findUserByCredentials(existingUser.email, req.body.currentPassword);
+        if (!currentUser) {
+          return res.status(401).json({ message: "Current password is incorrect" });
+        }
+      }
+
+      const updatedUser = await dao.updateUser(id, req.body);
+      if (updatedUser) {
+        res.json(updatedUser);
+      } else {
+        res.status(500).json({ message: "Failed to update user" });
+      }
+    } catch (error) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Error updating user" });
+    }
+  };
+  app.put("/api/users/:id", updateUser);
+
+  // Delete User
+  const deleteUser = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const status = await dao.deleteUser(id);
+      if (status.deletedCount === 1) {
+        res.json({ message: "User deleted successfully" });
+      } else {
+        res.status(404).json({ message: "User not found" });
+      }
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Error deleting user" });
+    }
+  };
+  app.delete("/api/users/:id", deleteUser);
 }

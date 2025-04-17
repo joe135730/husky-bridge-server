@@ -14,10 +14,10 @@ export const createUser = (user) => {
 };
   
 export const findAllUsers = () => model.find();
-export const findUserById = (userId) => model.findById(userId);
+export const findUserById = (userId) => model.findOne({ _id: userId });
 export const findUserByEmail = (email) => model.findOne({ email: email });
 export const findUserByCredentials = (email, password) => 
     model.findOne({ email, password });
-export const updateUser = (userId, user) => 
-    model.updateOne({ _id: userId }, { $set: user });
+export const updateUser = (userId, userUpdates) =>
+  model.findOneAndUpdate({ _id: userId }, { $set: userUpdates }, { new: true });
 export const deleteUser = (userId) => model.deleteOne({ _id: userId });
