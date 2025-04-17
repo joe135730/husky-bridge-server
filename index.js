@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import session from 'express-session';
 
 import UserRoutes from './Users/routes.js';
+import PostRoutes from './Posts/routes.js';
 
 // Load environment variables
 try {
@@ -59,6 +60,7 @@ app.use(
 app.use(express.json());
 
 UserRoutes(app);
+PostRoutes(app);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
