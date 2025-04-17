@@ -1,0 +1,35 @@
+{
+  "type": "module",
+  "name": "husky-bridge-server",
+  "version": "1.0.0",
+  "description": "Node.js HTTP Web server for husky-bridge",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joe135730/husky-bridge-server.git"
+  },
+  "keywords": [
+    "Node",
+    "REST",
+    "Server",
+    "HTTP",
+    "Web",
+    "Development"
+  ],
+  "author": "Che-Yi Wu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/joe135730/husky-bridge-server/issues"
+  },
+  "homepage": "https://github.com/joe135730/husky-bridge-server#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "mongoose": "^8.13.2",
+    "uuid": "^11.1.0"
+  }
+}
