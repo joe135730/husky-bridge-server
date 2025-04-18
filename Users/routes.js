@@ -74,9 +74,27 @@ export default function UserRoutes(app) {
 
   // Get all users
   const findAllUsers = async (req, res) => {
-    const users = await dao.findAllUsers();
-    res.json(users);
+    try {
+      console.log("GET /api/users 請求已收到");
+      const currentUser = req.session["currentUser"];
+      const allUsers = await dao.findAllUsers();
+      
+      console.log("獲取到的用戶列表:", allUsers);
+  
+      const filteredUsers = currentUser
+        ? allUsers.filter(user => user._id.toString() !== currentUser._id)
+        : allUsers;
+      
+      console.log("過濾後的用戶列表:", filteredUsers);
+  
+      res.json(filteredUsers || []);
+    } catch (err) {
+      console.error("Error fetching all users:", err);
+      res.status(500).json({ message: "Error fetching users" });
+    }
   };
+  
+  // 確保路由註冊
   app.get("/api/users", findAllUsers);
 
   // Create User

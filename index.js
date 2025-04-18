@@ -6,6 +6,7 @@ import session from 'express-session';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
+import ChatRoutes from './Chat/routes.js'; // or adjust path if needed
 
 // Load environment variables
 try {
@@ -61,8 +62,15 @@ app.use(express.json());
 
 UserRoutes(app);
 PostRoutes(app);
+ChatRoutes(app);
 
 const PORT = process.env.PORT || 4000;
+
+//  Add a catch-all for 404s
+app.use((req, res) => {
+  res.status(404).json({ message: "API route not found" });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
