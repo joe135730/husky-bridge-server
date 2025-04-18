@@ -303,31 +303,27 @@ export default function PostRoutes(app) {
                 return res.status(404).json({ message: "Post not found" });
             }
 
-            if (post.userId !== currentUser._id) {
-                return res.status(403).json({ message: "Not authorized to view participants for this post" });
-            }
-
-            // Fetch all participants with their user details
+            // Get user details for each participant
             const participantsWithDetails = await Promise.all(
                 post.participants.map(async (participant) => {
                     const user = await findUserById(participant.userId);
+                    console.log("Found user:", user); // Debug log
                     return {
                         ...participant.toObject(),
                         user: user ? {
                             _id: user._id,
-                            username: user.username,
                             firstName: user.firstName,
                             lastName: user.lastName,
                             email: user.email
-                        } : { _id: participant.userId, username: "Unknown User" }
+                        } : null
                     };
                 })
             );
 
             res.json(participantsWithDetails);
         } catch (error) {
-            console.error("Error retrieving pending participants:", error);
-            res.status(500).json({ message: "Error retrieving pending participants" });
+            console.error("Error retrieving participants:", error);
+            res.status(500).json({ message: "Error retrieving participants" });
         }
     };
     app.get("/api/posts/:id/participants", getPendingParticipants);
@@ -342,4 +338,54 @@ export default function PostRoutes(app) {
         }
     };
     app.get("/api/posts/filter", findPostsWithFilters);
+
+    // Mark post as complete by either owner or participant
+    app.put('/api/posts/:id/mark-complete', async (req, res) => {
+        try {
+            const postId = req.params.id;
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(postId);
+            if (!post) {
+                return res.status(404).json({ message: 'Post not found' });
+            }
+
+            // Check if user is either owner or selected participant
+            const isOwner = post.userId === currentUser._id;
+            const isParticipant = post.participants.some(p => p.userId === currentUser._id);
+
+            if (!isOwner && !isParticipant) {
+                return res.status(403).json({ message: 'Not authorized to mark this post as complete' });
+            }
+
+            // Update completion status based on user role
+            if (isOwner) {
+                post.ownerCompleted = true;
+            } else if (isParticipant) {
+                const participant = post.participants.find(p => p.userId === currentUser._id);
+                if (participant) {
+                    participant.status = 'Complete';
+                    participant.completedAt = new Date();
+                }
+            }
+
+            // Check if both owner and participant have completed
+            const selectedParticipant = post.participants.find(p => p.userId === post.selectedParticipantId);
+            if (post.ownerCompleted && selectedParticipant?.status === 'Complete') {
+                post.status = 'Complete';
+            } else if (post.ownerCompleted || selectedParticipant?.status === 'Complete') {
+                post.status = 'Wait for Complete';
+            }
+
+            // Save the updated post
+            const updatedPost = await dao.updatePost(postId, post);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error('Error marking post as complete:', error);
+            res.status(500).json({ message: 'Error marking post as complete' });
+        }
+    });
 } 

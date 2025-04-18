@@ -17,7 +17,7 @@ const postSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
     // The overall status of the post
-    status: { type: String, enum: ['Pending', 'In Progress', 'Complete'], default: 'Pending' },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Wait for Complete', 'Complete'], default: 'Pending' },
     // Participants who have expressed interest in the post
     participants: [participantSchema],
     // The selected participant who was chosen by the post owner
