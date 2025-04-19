@@ -150,4 +150,16 @@ export const findPostsByCategories = async (categories) => {
         console.error('Error fetching posts by categories:', error);
         throw error;
     }
+};
+
+// Find posts by title (case-insensitive search)
+export const findPostsByTitle = (title) => {
+    try {
+        return model.find({ 
+            title: { $regex: title, $options: 'i' } 
+        }).sort({ createdAt: -1 });
+    } catch (error) {
+        console.error('Error fetching posts by title:', error);
+        throw error;
+    }
 }; 
