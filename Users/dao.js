@@ -14,7 +14,15 @@ export const createUser = (user) => {
 };
   
 export const findAllUsers = () => model.find();
-export const findUserById = (userId) => model.findOne({ _id: userId });
+
+// Updated to handle UUID format
+export const findUserById = async (userId) => {
+    console.log("Looking up user with ID:", userId); // Debug log
+    const user = await model.findOne({ _id: userId });
+    console.log("Found user:", user); // Debug log
+    return user;
+};
+
 export const findUserByEmail = (email) => model.findOne({ email: email });
 export const findUserByCredentials = (email, password) => 
     model.findOne({ email, password });

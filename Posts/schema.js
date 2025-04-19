@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 
+const participantSchema = new mongoose.Schema({
+    userId: { type: String, required: true },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Complete'], default: 'Pending' },
+    completedAt: { type: Date, default: null }
+}, { _id: false });
+
 const postSchema = new mongoose.Schema({
     userId: { type: String, required: true },  // UUID of the user who created the post
     title: { type: String, required: true },
@@ -8,11 +14,17 @@ const postSchema = new mongoose.Schema({
     location: { type: String, required: true },
     availability: { type: Date, required: true },
     description: { type: String, required: true },
-    isCompleted: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
-    acceptedBy: { type: String, default: null },  // UUID of the user who accepted the post
-    status: { type: String, enum: ['active', 'pending', 'completed'], default: 'active' }
+    // The overall status of the post
+    status: { type: String, enum: ['Pending', 'In Progress', 'Wait for Complete', 'Complete'], default: 'Pending' },
+    // Participants who have expressed interest in the post
+    participants: [participantSchema],
+    // The selected participant who was chosen by the post owner
+    selectedParticipantId: { type: String, default: null },
+    // Track completion status for both parties
+    ownerCompleted: { type: Boolean, default: false },
+    participantCompleted: { type: Boolean, default: false }
 }, {
     collection: "posts"
 });

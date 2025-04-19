@@ -1,4 +1,5 @@
 import * as dao from "./dao.js";
+import { findUserById } from "../Users/dao.js";
 
 export default function PostRoutes(app) {
     // Create a new post
@@ -12,8 +13,13 @@ export default function PostRoutes(app) {
             const post = await dao.createPost({
                 ...req.body,
                 userId: currentUser._id,
+                status: 'Pending',
                 createdAt: new Date(),
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                participants: [],
+                selectedParticipantId: null,
+                ownerCompleted: false,
+                participantCompleted: false
             });
             res.json(post);
         } catch (error) {
@@ -34,7 +40,7 @@ export default function PostRoutes(app) {
     };
     app.get("/api/posts", findAllPosts);
 
-    // Get posts by user ID
+    // Get posts by user ID (posts created by the user)
     const findPostsByUserId = async (req, res) => {
         try {
             const currentUser = req.session["currentUser"];
@@ -50,15 +56,69 @@ export default function PostRoutes(app) {
     };
     app.get("/api/posts/user", findPostsByUserId);
 
+    // Get posts where user is participating (either as owner or participant)
+    const findPostsByParticipant = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const posts = await dao.findPostsByParticipant(currentUser._id);
+            res.json(posts);
+        } catch (error) {
+            res.status(500).json({ message: "Error retrieving participating posts" });
+        }
+    };
+    app.get("/api/posts/participating", findPostsByParticipant);
+
     // Get post by ID
     const findPostById = async (req, res) => {
         try {
+            const currentUser = req.session["currentUser"] || null;
             const post = await dao.findPostById(req.params.id);
+            
             if (!post) {
                 return res.status(404).json({ message: "Post not found" });
             }
+
+            // Add user relationship context to the response
+            if (currentUser) {
+                // If the user is the post owner
+                if (post.userId === currentUser._id) {
+                    post._doc.userRelationship = "owner";
+                } 
+                // If the user is the selected participant
+                else if (post.selectedParticipantId === currentUser._id) {
+                    post._doc.userRelationship = "selected";
+                    
+                    // Find the user's participant record
+                    const participant = post.participants.find(p => p.userId === currentUser._id);
+                    if (participant) {
+                        post._doc.userParticipantStatus = participant.status;
+                    }
+                } 
+                // If the user is a participant but not selected
+                else if (post.participants.some(p => p.userId === currentUser._id)) {
+                    post._doc.userRelationship = "participant";
+                    
+                    // Find the user's participant record
+                    const participant = post.participants.find(p => p.userId === currentUser._id);
+                    if (participant) {
+                        post._doc.userParticipantStatus = participant.status;
+                    }
+                } 
+                // If the user has no relationship with the post
+                else {
+                    post._doc.userRelationship = "none";
+                }
+            } else {
+                post._doc.userRelationship = "none";
+            }
+            
             res.json(post);
         } catch (error) {
+            console.error("Error retrieving post:", error);
             res.status(500).json({ message: "Error retrieving post" });
         }
     };
@@ -117,8 +177,8 @@ export default function PostRoutes(app) {
     };
     app.delete("/api/posts/:id", deletePost);
 
-    // Mark post as completed
-    const markPostAsCompleted = async (req, res) => {
+    // Mark post as completed by owner
+    const markPostAsCompletedByOwner = async (req, res) => {
         try {
             const currentUser = req.session["currentUser"];
             if (!currentUser) {
@@ -134,16 +194,42 @@ export default function PostRoutes(app) {
                 return res.status(403).json({ message: "Not authorized to complete this post" });
             }
 
-            const updatedPost = await dao.markPostAsCompleted(req.params.id);
+            const updatedPost = await dao.markPostAsCompletedByOwner(req.params.id);
             res.json(updatedPost);
         } catch (error) {
             res.status(500).json({ message: "Error completing post" });
         }
     };
-    app.put("/api/posts/:id/complete", markPostAsCompleted);
+    app.put("/api/posts/:id/complete-owner", markPostAsCompletedByOwner);
 
-    // Accept post
-    const acceptPost = async (req, res) => {
+    // Mark post as completed by participant
+    const markPostAsCompletedByParticipant = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Check if current user is the selected participant
+            if (post.selectedParticipantId !== currentUser._id) {
+                return res.status(403).json({ message: "Not authorized to complete this post" });
+            }
+
+            const updatedPost = await dao.markPostAsCompletedByParticipant(req.params.id, currentUser._id);
+            res.json(updatedPost);
+        } catch (error) {
+            res.status(500).json({ message: "Error completing post" });
+        }
+    };
+    app.put("/api/posts/:id/complete-participant", markPostAsCompletedByParticipant);
+
+    // Express interest in a post (add participant)
+    const addParticipant = async (req, res) => {
         try {
             const currentUser = req.session["currentUser"];
             if (!currentUser) {
@@ -156,16 +242,91 @@ export default function PostRoutes(app) {
             }
 
             if (post.userId === currentUser._id) {
-                return res.status(400).json({ message: "Cannot accept your own post" });
+                return res.status(400).json({ message: "Cannot participate in your own post" });
             }
 
-            const updatedPost = await dao.acceptPost(req.params.id, currentUser._id);
+            const updatedPost = await dao.addParticipant(req.params.id, currentUser._id);
+            if (!updatedPost) {
+                return res.status(400).json({ message: "Already participating in this post" });
+            }
+            
             res.json(updatedPost);
         } catch (error) {
-            res.status(500).json({ message: "Error accepting post" });
+            res.status(500).json({ message: "Error expressing interest in post" });
         }
     };
-    app.put("/api/posts/:id/accept", acceptPost);
+    app.put("/api/posts/:id/participate", addParticipant);
+
+    // Select a participant (post owner accepting a participant)
+    const selectParticipant = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            if (post.userId !== currentUser._id) {
+                return res.status(403).json({ message: "Not authorized to select participants for this post" });
+            }
+
+            // Check if the participant exists in the post
+            const participantId = req.params.participantId;
+            const participantExists = post.participants.some(p => p.userId === participantId);
+            
+            if (!participantExists) {
+                return res.status(404).json({ message: "Participant not found" });
+            }
+
+            const updatedPost = await dao.selectParticipant(req.params.id, participantId);
+            res.json(updatedPost);
+        } catch (error) {
+            res.status(500).json({ message: "Error selecting participant" });
+        }
+    };
+    app.put("/api/posts/:id/select/:participantId", selectParticipant);
+
+    // Get pending participants for a post
+    const getPendingParticipants = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Get user details for each participant
+            const participantsWithDetails = await Promise.all(
+                post.participants.map(async (participant) => {
+                    const user = await findUserById(participant.userId);
+                    console.log("Found user:", user); // Debug log
+                    return {
+                        ...participant.toObject(),
+                        user: user ? {
+                            _id: user._id,
+                            firstName: user.firstName,
+                            lastName: user.lastName,
+                            email: user.email
+                        } : null
+                    };
+                })
+            );
+
+            res.json(participantsWithDetails);
+        } catch (error) {
+            console.error("Error retrieving participants:", error);
+            res.status(500).json({ message: "Error retrieving participants" });
+        }
+    };
+    app.get("/api/posts/:id/participants", getPendingParticipants);
 
     // Find posts with filters
     const findPostsWithFilters = async (req, res) => {
@@ -177,4 +338,54 @@ export default function PostRoutes(app) {
         }
     };
     app.get("/api/posts/filter", findPostsWithFilters);
+
+    // Mark post as complete by either owner or participant
+    app.put('/api/posts/:id/mark-complete', async (req, res) => {
+        try {
+            const postId = req.params.id;
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(postId);
+            if (!post) {
+                return res.status(404).json({ message: 'Post not found' });
+            }
+
+            // Check if user is either owner or selected participant
+            const isOwner = post.userId === currentUser._id;
+            const isParticipant = post.participants.some(p => p.userId === currentUser._id);
+
+            if (!isOwner && !isParticipant) {
+                return res.status(403).json({ message: 'Not authorized to mark this post as complete' });
+            }
+
+            // Update completion status based on user role
+            if (isOwner) {
+                post.ownerCompleted = true;
+            } else if (isParticipant) {
+                const participant = post.participants.find(p => p.userId === currentUser._id);
+                if (participant) {
+                    participant.status = 'Complete';
+                    participant.completedAt = new Date();
+                }
+            }
+
+            // Check if both owner and participant have completed
+            const selectedParticipant = post.participants.find(p => p.userId === post.selectedParticipantId);
+            if (post.ownerCompleted && selectedParticipant?.status === 'Complete') {
+                post.status = 'Complete';
+            } else if (post.ownerCompleted || selectedParticipant?.status === 'Complete') {
+                post.status = 'Wait for Complete';
+            }
+
+            // Save the updated post
+            const updatedPost = await dao.updatePost(postId, post);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error('Error marking post as complete:', error);
+            res.status(500).json({ message: 'Error marking post as complete' });
+        }
+    });
 } 
