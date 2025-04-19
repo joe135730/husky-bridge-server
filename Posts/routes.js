@@ -456,4 +456,42 @@ export default function PostRoutes(app) {
         }
     };
     app.get("/api/posts/title/:title", findPostsByTitle);
+
+    // Remove a participant from a post
+    const removeParticipant = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Only allow post owner to remove participants
+            if (post.userId !== currentUser._id) {
+                return res.status(403).json({ message: "Not authorized to remove participants" });
+            }
+
+            // Remove the participant
+            post.participants = post.participants.filter(
+                p => p.userId !== req.params.participantId
+            );
+
+            // If this was the selected participant, clear that as well
+            if (post.selectedParticipantId === req.params.participantId) {
+                post.selectedParticipantId = null;
+                post.status = 'Pending'; // Reset status if selected participant is removed
+            }
+
+            const updatedPost = await dao.updatePost(req.params.id, post);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error("Error removing participant:", error);
+            res.status(500).json({ message: "Error removing participant" });
+        }
+    };
+    app.delete("/api/posts/:id/participants/:participantId", removeParticipant);
 } 
