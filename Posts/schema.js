@@ -12,7 +12,7 @@ const postSchema = new mongoose.Schema({
     postType: { type: String, enum: ['request', 'offer'], required: true },
     category: { type: String, enum: ['general', 'housing', 'tutoring', 'lend-borrow'], required: true },
     location: { type: String, required: true },
-    availability: { type: Date, required: true },
+    availability: { type: String, required: true },
     description: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
