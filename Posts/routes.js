@@ -444,4 +444,16 @@ export default function PostRoutes(app) {
         }
     };
     app.post("/api/posts/categories", findPostsByCategories);
+
+    const findPostsByTitle = async (req, res) => {
+        try{
+            const { title } = req.params;
+            const posts = await dao.findPostsByTitle(title);
+            res.json(posts);
+        } catch (error) {
+            console.error("Error retrieving posts by title:", error);
+            res.status(500).json({ message: "Error retrieving posts by title" });
+        }
+    };
+    app.get("/api/posts/title/:title", findPostsByTitle);
 } 
