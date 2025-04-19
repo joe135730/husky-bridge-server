@@ -428,4 +428,20 @@ export default function PostRoutes(app) {
         }
     };
     app.get("/api/posts/category/:category", findPostsByCategory);
+
+    // Find posts by multiple categories
+    const findPostsByCategories = async (req, res) => {
+        try {
+            const { categories } = req.body;
+            if (!categories || !Array.isArray(categories)) {
+                return res.status(400).json({ message: "Categories must be provided as an array" });
+            }
+            const posts = await dao.findPostsByCategories(categories);
+            res.json(posts);
+        } catch (error) {
+            console.error("Error retrieving posts by categories:", error);
+            res.status(500).json({ message: "Error retrieving posts by categories" });
+        }
+    };
+    app.post("/api/posts/categories", findPostsByCategories);
 } 
