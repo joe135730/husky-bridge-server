@@ -134,4 +134,10 @@ export const findPostsWithFilters = (filters) => {
     }
     
     return model.find(query).sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 });
-}; 
+};
+
+// Find posts by category
+export const findPostByCategory = (category) => 
+    model.find({ category }).sort({ createdAt: -1 }
+
+); 
