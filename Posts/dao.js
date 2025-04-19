@@ -138,6 +138,16 @@ export const findPostsWithFilters = (filters) => {
 
 // Find posts by category
 export const findPostByCategory = (category) => 
-    model.find({ category }).sort({ createdAt: -1 }
+    model.find({ category }).sort({ createdAt: -1 });
 
-); 
+// Find posts by multiple categories
+export const findPostsByCategories = async (categories) => {
+    try {
+        const postsPromises = categories.map(category => findPostByCategory(category));
+        const postsResults = await Promise.all(postsPromises);
+        return postsResults.flat();
+    } catch (error) {
+        console.error('Error fetching posts by categories:', error);
+        throw error;
+    }
+}; 
