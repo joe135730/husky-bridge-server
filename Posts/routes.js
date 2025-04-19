@@ -415,4 +415,17 @@ export default function PostRoutes(app) {
             res.status(500).json({ message: 'Error marking post as complete' });
         }
     });
+
+    // Get posts by category
+    const findPostsByCategory = async (req, res) => {
+        try {
+            const { category } = req.params;
+            const posts = await dao.findPostByCategory(category);
+            res.json(posts);
+        } catch (error) {
+            console.error("Find posts by category error:", error);
+            res.status(500).json({ message: "Error retrieving posts by category" });
+        }
+    };
+    app.get("/api/posts/category/:category", findPostsByCategory);
 } 
