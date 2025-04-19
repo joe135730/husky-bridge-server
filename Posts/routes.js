@@ -165,13 +165,22 @@ export default function PostRoutes(app) {
                 return res.status(404).json({ message: "Post not found" });
             }
 
+            // Only allow post owner to delete
             if (post.userId !== currentUser._id) {
                 return res.status(403).json({ message: "Not authorized to delete this post" });
+            }
+
+            // Check if post has active participants
+            if (post.status === 'In Progress' || post.status === 'Wait for Complete') {
+                return res.status(400).json({ 
+                    message: "Cannot delete post with active participants. Please complete or cancel the post first." 
+                });
             }
 
             await dao.deletePost(req.params.id);
             res.json({ message: "Post deleted successfully" });
         } catch (error) {
+            console.error("Delete post error:", error);
             res.status(500).json({ message: "Error deleting post" });
         }
     };
