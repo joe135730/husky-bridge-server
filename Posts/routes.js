@@ -361,23 +361,41 @@ export default function PostRoutes(app) {
                 return res.status(403).json({ message: 'Not authorized to mark this post as complete' });
             }
 
-            // Update completion status based on user role
-            if (isOwner) {
-                post.ownerCompleted = true;
-            } else if (isParticipant) {
-                const participant = post.participants.find(p => p.userId === currentUser._id);
-                if (participant) {
-                    participant.status = 'Complete';
-                    participant.completedAt = new Date();
-                }
+            const selectedParticipant = post.participants.find(p => p.userId === post.selectedParticipantId);
+            if (!selectedParticipant) {
+                return res.status(400).json({ message: 'No selected participant found' });
             }
 
-            // Check if both owner and participant have completed
-            const selectedParticipant = post.participants.find(p => p.userId === post.selectedParticipantId);
-            if (post.ownerCompleted && selectedParticipant?.status === 'Complete') {
-                post.status = 'Complete';
-            } else if (post.ownerCompleted || selectedParticipant?.status === 'Complete') {
-                post.status = 'Wait for Complete';
+            // Update completion status based on user role
+            if (isOwner) {
+                // Owner marking complete
+                post.ownerCompleted = true;
+                
+                // If participant is already in Wait for Complete, mark both as Complete
+                if (selectedParticipant.status === 'Wait for Complete') {
+                    post.status = 'Complete';
+                    selectedParticipant.status = 'Complete';
+                } else {
+                    // Participant is still In Progress
+                    post.status = 'Wait for Complete';
+                    // Keep participant status as is (In Progress)
+                }
+            } else if (isParticipant) {
+                // Participant marking complete
+                const participant = post.participants.find(p => p.userId === currentUser._id);
+                if (participant) {
+                    // If owner has already completed
+                    if (post.ownerCompleted) {
+                        post.status = 'Complete';
+                        participant.status = 'Complete';
+                    } else {
+                        // Owner hasn't completed yet
+                        post.status = 'Wait for Complete';
+                        participant.status = 'Wait for Complete';
+                        // Note: Owner status implicitly remains 'In Progress'
+                    }
+                    participant.completedAt = new Date();
+                }
             }
 
             // Save the updated post
