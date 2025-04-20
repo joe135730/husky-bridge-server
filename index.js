@@ -45,46 +45,35 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://husky-bridge.netlify.app',
   'https://husky-bridge.netlify.com',
-  'https://husky-bridge-app.netlify.app',
-  'https://main--husky-bridge.netlify.app' // Add the main Netlify domain
+  'https://husky-bridge-app.netlify.app' // Add any additional Netlify domains
 ];
 
 // Configure CORS to accept credentials
 app.use(cors({
   credentials: true,
   origin: function(origin, callback) {
-    console.log("Incoming request from origin:", origin);
-    
     // Allow requests with no origin (like mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
     
-    // Allow all origins during development
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    
-    // In production, check against allowed origins
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.indexOf(origin) === -1) {
+      console.log("Origin allowed:", origin);
       return callback(null, true);
     } else {
-      console.log("Origin not in allowed list but allowing:", origin);
-      return callback(null, true); // Allow all origins for now to debug
+      return callback(null, true);
     }
   },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
     'Set-Cookie',
     'X-Debug-User-Role'
-  ],
-  exposedHeaders: ['Set-Cookie']
+  ]
 }));
 
 // Debugging middleware to log requests
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin || 'Unknown'}`);
-  console.log("Cookies:", req.headers.cookie);
   next();
 });
 
@@ -94,14 +83,11 @@ app.use(
     secret: process.env.SESSION_SECRET || "your_session_secret",
     resave: false,
     saveUninitialized: false,
-    proxy: true, // Trust the reverse proxy
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // True in production with HTTPS
+      secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/',
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for better persistence
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site cookies in production
     }
   })
 );

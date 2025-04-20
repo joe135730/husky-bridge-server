@@ -1,18 +1,4 @@
 import * as dao from "./dao.js";
-import jwt from "jsonwebtoken";
-
-// Create JWT token for user
-const generateToken = (user) => {
-  const payload = {
-    id: user._id,
-    email: user.email,
-    role: user.role
-  };
-  return jwt.sign(payload, process.env.JWT_SECRET || "jwt_fallback_secret", {
-    expiresIn: "7d" // 7 days
-  });
-};
-
 export default function UserRoutes(app) {
   // Sign in
   const signin = async (req, res) => {
@@ -25,18 +11,8 @@ export default function UserRoutes(app) {
           ...currentUser.toObject(),
           role: currentUser.role.toUpperCase()
         };
-        
-        // Store in session
         req.session["currentUser"] = formattedUser;
-        
-        // Generate token as fallback
-        const token = generateToken(formattedUser);
-        
-        // Send both session cookie and token
-        res.json({
-          ...formattedUser,
-          token // Include token in response
-        });
+        res.json(formattedUser);
       } else {
         res.status(401).json({ message: "Invalid credentials" });
       }
@@ -65,18 +41,8 @@ export default function UserRoutes(app) {
       }
 
       const currentUser = await dao.createUser(req.body);
-      
-      // Store in session
       req.session["currentUser"] = currentUser;
-      
-      // Generate token as fallback
-      const token = generateToken(currentUser);
-      
-      // Send both session cookie and token
-      res.json({
-        ...currentUser.toObject(),
-        token // Include token in response
-      });
+      res.json(currentUser);
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ 
@@ -85,33 +51,6 @@ export default function UserRoutes(app) {
     }
   };
   app.post("/api/users/signup", signup);
-
-  // Extract user from token (middleware)
-  const extractUserFromToken = async (req, res, next) => {
-    // If already authenticated via session, continue
-    if (req.session && req.session.currentUser) {
-      return next();
-    }
-    
-    // Check for token in headers
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "jwt_fallback_secret");
-        // Find user in DB to ensure they still exist
-        const user = await dao.findUserById(decoded.id);
-        if (user) {
-          // Set in both session and request for convenience
-          req.session.currentUser = user;
-          req.user = user;
-        }
-      } catch (error) {
-        console.error("Token verification error:", error);
-      }
-    }
-    next();
-  };
 
   // Profile - Get current user from session
   const profile = async (req, res) => {
@@ -143,31 +82,20 @@ export default function UserRoutes(app) {
       res.status(403).json({ message: "Not authenticated" });
     }
   };
-  app.post("/api/users/profile", extractUserFromToken, profile);
-  app.get("/api/users/profile", extractUserFromToken, profile); // Support GET method too
+  app.post("/api/users/profile", profile);
+  app.get("/api/users/profile", profile); // Support GET method too
 
   // Sign out
   const signout = (req, res) => {
-    if (req.session) {
-      req.session.destroy((err) => {
-        if (err) {
-          console.error("Error destroying session:", err);
-          return res.status(500).json({ message: "Error signing out" });
-        }
-        // Clear session cookie
-        res.clearCookie('connect.sid');
-        res.json({ message: "Signed out successfully" });
-      });
-    } else {
-      res.json({ message: "Already signed out" });
-    }
+    req.session.destroy();
+    res.sendStatus(200);
   };
   app.post("/api/users/signout", signout);
 
   // Get all users
   const findAllUsers = async (req, res) => {
     try {
-      const currentUser = req.session["currentUser"] || req.user;
+      const currentUser = req.session["currentUser"];
       const allUsers = await dao.findAllUsers();
       
       const filteredUsers = currentUser
@@ -182,7 +110,7 @@ export default function UserRoutes(app) {
   };
   
   // 確保路由註冊
-  app.get("/api/users", extractUserFromToken, findAllUsers);
+  app.get("/api/users", findAllUsers);
 
   // Create User
   const createUser = async (req, res) => {
@@ -220,7 +148,7 @@ export default function UserRoutes(app) {
       res.status(500).json({ message: "Error updating user" });
     }
   };
-  app.put("/api/users/:id", extractUserFromToken, updateUser);
+  app.put("/api/users/:id", updateUser);
 
   // Delete User
   const deleteUser = async (req, res) => {
@@ -237,7 +165,7 @@ export default function UserRoutes(app) {
       res.status(500).json({ message: "Error deleting user" });
     }
   };
-  app.delete("/api/users/:id", extractUserFromToken, deleteUser);
+  app.delete("/api/users/:id", deleteUser);
 
   // Add a simple endpoint to check if user is authenticated
   const checkAuth = (req, res) => {
@@ -249,12 +177,10 @@ export default function UserRoutes(app) {
         { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
     });
     
-    const currentUser = req.session?.currentUser || req.user;
-    
-    if (currentUser) {
+    if (req.session && req.session.currentUser) {
       res.status(200).json({ 
         authenticated: true, 
-        user: currentUser 
+        user: req.session.currentUser 
       });
     } else {
       res.status(401).json({ 
@@ -263,8 +189,8 @@ export default function UserRoutes(app) {
       });
     }
   };
-  app.get("/api/auth/current", extractUserFromToken, checkAuth);
-  app.get("/api/users/check-auth", extractUserFromToken, checkAuth); // For backward compatibility
+  app.get("/api/auth/current", checkAuth);
+  app.get("/api/users/check-auth", checkAuth); // For backward compatibility
   
   // Add an admin check endpoint
   const checkAdmin = (req, res) => {
@@ -276,17 +202,15 @@ export default function UserRoutes(app) {
         { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
     });
     
-    const currentUser = req.session?.currentUser || req.user;
-    
-    if (currentUser) {
+    if (req.session && req.session.currentUser) {
       // Case-insensitive check for admin role
-      const isAdmin = currentUser.role && 
-                     currentUser.role.toUpperCase() === 'ADMIN';
+      const isAdmin = req.session.currentUser.role && 
+                     req.session.currentUser.role.toUpperCase() === 'ADMIN';
                      
       if (isAdmin) {
         return res.status(200).json({ 
           isAdmin: true, 
-          user: currentUser 
+          user: req.session.currentUser 
         });
       }
       
@@ -305,5 +229,5 @@ export default function UserRoutes(app) {
       message: "Not authenticated" 
     });
   };
-  app.get("/api/auth/check-admin", extractUserFromToken, checkAdmin);
+  app.get("/api/auth/check-admin", checkAdmin);
 }
