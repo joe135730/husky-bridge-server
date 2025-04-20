@@ -26,21 +26,31 @@ export const authenticateUser = (req, res, next) => {
 // Admin authorization middleware
 export const isAdmin = (req, res, next) => {
   if (!req.user) {
+    console.error("Admin middleware - No user object found in request");
     return res.status(403).json({ message: "Forbidden - admin access only" });
   }
   
   const userRole = req.user?.role || '';
   
-  // Debug role info
+  // Enhanced debug role info
   console.log("Admin Middleware - User role check:", {
     role: userRole,
-    isAdmin: userRole.toUpperCase() === "ADMIN"
+    roleType: typeof userRole,
+    upperRole: userRole.toUpperCase(),
+    isAdmin: userRole.toUpperCase() === "ADMIN",
+    userId: req.user._id,
+    sessionID: req.sessionID
   });
   
   // Case-insensitive check for "admin" role - also accept "ADMIN" and "admin"
   if (userRole.toUpperCase() !== "ADMIN") {
-    return res.status(403).json({ message: "Forbidden - admin access only" });
+    console.error("Admin middleware - User is not admin:", userRole);
+    return res.status(403).json({ 
+      message: "Forbidden - admin access only",
+      currentRole: userRole
+    });
   }
   
+  console.log("Admin middleware - Admin access granted for user:", req.user._id);
   next();
 }; 
