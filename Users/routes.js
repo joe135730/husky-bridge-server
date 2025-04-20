@@ -11,27 +11,13 @@ export default function UserRoutes(app) {
           ...currentUser.toObject(),
           role: currentUser.role.toUpperCase()
         };
-
-        // Store the current session ID for comparison
-        const sessionIdBefore = req.sessionID;
-        
-        // Set user in session
-        req.session.currentUser = formattedUser;
-        // Save session explicitly
-        await new Promise((resolve, reject) => {
-          req.session.save(err => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
+        req.session["currentUser"] = formattedUser;
         
         // Debug logging
         console.log("Signin successful:", { 
           userId: formattedUser._id,
-          sessionIDBefore: sessionIdBefore,
-          sessionIDAfter: req.sessionID,
-          hasSession: !!req.session,
-          sessionUser: !!req.session.currentUser
+          sessionID: req.sessionID,
+          hasSession: !!req.session
         });
         
         res.json(formattedUser);
@@ -76,35 +62,17 @@ export default function UserRoutes(app) {
 
   // Profile - Get current user from session
   const profile = async (req, res) => {
-    // Debug session information
-    console.log("Profile check - Session info:", { 
-      hasSession: !!req.session,
-      sessionID: req.sessionID,
-      hasUser: !!req.session?.currentUser,
-      userData: req.session?.currentUser ? 
-        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
-    });
-    
-    if (req.session && req.session.currentUser) {
+    const currentUser = req.session["currentUser"];
+    if (currentUser) {
       // Update user with latest data from database
       try {
-        const user = await dao.findUserById(req.session.currentUser._id);
-        
-        if (!user) {
-          console.error("User from session not found in database:", req.session.currentUser._id);
-          return res.status(404).json({ message: "User not found" });
-        }
+        const user = await dao.findUserById(currentUser._id);
         
         // Ensure consistent role casing
         const formattedUser = {
           ...user.toObject(),
           role: user.role.toUpperCase()
         };
-        
-        // Refresh user data in session
-        req.session.currentUser = formattedUser;
-        await new Promise(resolve => req.session.save(resolve));
-        
         res.json(formattedUser);
       } catch (error) {
         console.error("Profile error:", error);
@@ -112,7 +80,6 @@ export default function UserRoutes(app) {
       }
     } else {
       // Return 401 Unauthorized instead of 403 Forbidden
-      console.log("No user in session for profile request");
       res.status(401).json({ message: "Not authenticated" });
     }
   };
@@ -266,34 +233,24 @@ export default function UserRoutes(app) {
 
   // Add a debug endpoint to check authentication
   const checkAuthDebug = (req, res) => {
-    // First log the info before and the session ID
-    const sessionID = req.sessionID;
-    console.log(`Auth Debug Request - Session ID: ${sessionID}`);
-    console.log("Session Cookie:", req.headers.cookie);
-    
-    // Then log the debug info
     console.log("Debug Auth Info:", {
       hasSession: !!req.session,
       sessionID: req.sessionID,
-      hasCookie: !!req.headers.cookie,
+      hasCookie: !!req.cookies,
       cookiesList: req.headers.cookie,
       currentUser: req.session?.currentUser ? 
-        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none',
-      sessionData: req.session
+        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
     });
     
-    // Send the response
     res.json({
       authenticated: !!req.session?.currentUser,
       sessionInfo: {
         id: req.sessionID,
         hasCookie: !!req.headers.cookie,
-        hasSession: !!req.session,
-        cookieData: req.headers.cookie
+        hasSession: !!req.session
       },
       userInfo: req.session?.currentUser ? {
         id: req.session.currentUser._id,
-        firstName: req.session.currentUser.firstName,
         role: req.session.currentUser.role
       } : null
     });

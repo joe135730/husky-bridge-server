@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import cookieParser from 'cookie-parser';
-import { v4 as uuidv4 } from 'uuid';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
@@ -72,29 +71,20 @@ app.use(cors({
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: true,
-    saveUninitialized: true,
-    name: 'husky_session',
-    rolling: true,
-    genid: function(req) {
-      return req.sessionID || uuidv4();
-    },
+    resave: false,
+    saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production', // Cookies only work with HTTPS in production
       httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/',
-      domain: undefined
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      sameSite: 'none', // Always use 'none' for cross-site cookies
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Remove domain restriction altogether
     },
     store: MongoStore.create({
       mongoUrl: CONNECTION_STRING,
-      ttl: 30 * 24 * 60 * 60,
+      ttl: 24 * 60 * 60, // 1 day
       autoRemove: 'native',
-      touchAfter: 24 * 3600,
-      crypto: {
-        secret: process.env.SESSION_SECRET || "your_session_secret"
-      }
+      touchAfter: 24 * 3600 // Don't update session unless data changed
     })
   })
 );
@@ -108,16 +98,7 @@ app.use(cookieParser());
 // Add a middleware to ensure session is available
 app.use((req, res, next) => {
   if (!req.session) {
-    console.error('Session middleware not initialized');
-  } else {
-    // Debug session access on each request
-    const path = req.originalUrl || req.url;
-    if (!path.includes('/favicon.ico')) {  // Skip favicon requests
-      console.log(`Session access for ${path}: `, {
-        sessionID: req.sessionID,
-        hasUser: !!req.session.currentUser
-      });
-    }
+    console.error('Session not initialized');
   }
   next();
 });
