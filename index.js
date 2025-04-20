@@ -76,17 +76,47 @@ app.use(
       // This is critical for cross-domain cookies to work
       secure: process.env.NODE_ENV === 'production', 
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-    }
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (increased from 1 day)
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      // Add domain setting if in production
+      ...(process.env.NODE_ENV === 'production' && {
+        domain: process.env.COOKIE_DOMAIN || '.onrender.com'
+      })
+    },
+    rolling: true, // Refresh the cookie on each response
   })
 );
 
 // Parse JSON request bodies
 app.use(express.json());
 
-// Add a middleware to ensure session is available
+// Add more detailed middleware to debug session issues
 app.use((req, res, next) => {
+  // Only log once per minute per session to avoid excessive logging
+  const now = Date.now();
+  const sessionLastLogged = req.session._lastLogged || 0;
+  
+  if (now - sessionLastLogged > 60000) { // 1 minute
+    console.log(`Session debug [${req.method} ${req.path}]:`, {
+      sessionExists: !!req.session,
+      sessionID: req.sessionID,
+      userExists: !!req.session?.currentUser,
+      userID: req.session?.currentUser?._id,
+      role: req.session?.currentUser?.role || 'none',
+      cookieSettings: req.session?.cookie?._expires ? {
+        expires: req.session.cookie._expires,
+        maxAge: req.session.cookie.maxAge,
+        secure: req.session.cookie.secure,
+        httpOnly: req.session.cookie.httpOnly,
+        sameSite: req.session.cookie.sameSite,
+        domain: req.session.cookie.domain
+      } : 'No cookie info'
+    });
+    
+    // Update last logged timestamp
+    req.session._lastLogged = now;
+  }
+  
   if (!req.session) {
     console.error('Session not initialized');
   }
