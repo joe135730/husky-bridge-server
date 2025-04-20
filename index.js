@@ -3,7 +3,6 @@ import cors from "cors";
 import mongoose from "mongoose";
 import * as dotenv from 'dotenv';
 import session from 'express-session';
-import MongoStore from 'connect-mongo';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
@@ -56,11 +55,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      console.log("Origin allowed:", origin);
+      return callback(null, true);
     } else {
-      console.log("Origin not allowed:", origin);
-      callback(null, true); // Still allow for troubleshooting
+      return callback(null, true);
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -69,8 +68,7 @@ app.use(cors({
     'Authorization', 
     'Set-Cookie',
     'X-Debug-User-Role'
-  ],
-  exposedHeaders: ['set-cookie']
+  ]
 }));
 
 // Debugging middleware to log requests
@@ -85,15 +83,10 @@ app.use(
     secret: process.env.SESSION_SECRET || "your_session_secret",
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: CONNECTION_STRING,
-      ttl: 14 * 24 * 60 * 60, // = 14 days in seconds
-      autoRemove: 'native'  // Use MongoDB's TTL index
-    }),
     cookie: {
       secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
       httpOnly: true,
-      maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days for better persistence
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for better persistence
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site cookies in production
     }
   })
