@@ -54,6 +54,13 @@ export default function UserRoutes(app) {
 
   // Profile - Get current user from session
   const profile = async (req, res) => {
+    console.log("Profile endpoint called with session:", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      currentUser: req.session?.currentUser ? 
+        { id: req.session.currentUser._id, email: req.session.currentUser.email } : 'none'
+    });
+    
     const currentUser = req.session["currentUser"];
     if (currentUser) {
       // Update user with latest data from database
@@ -71,10 +78,12 @@ export default function UserRoutes(app) {
         res.status(404).json({ message: "User not found" });
       }
     } else {
-      res.sendStatus(403);
+      console.log("No user in session when accessing profile");
+      res.status(403).json({ message: "Not authenticated" });
     }
   };
   app.post("/api/users/profile", profile);
+  app.get("/api/users/profile", profile); // Support GET method too
 
   // Sign out
   const signout = (req, res) => {
