@@ -13,6 +13,11 @@ import ReportRoutes from './Reports/routes.js'; // Import Reports routes
 try {
   dotenv.config();
   console.log("Environment variables loaded successfully");
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("Session cookie settings:", {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  });
 } catch (error) {
   console.error("Error loading environment variables:", error);
 }
@@ -39,6 +44,9 @@ mongoose.connection.on('disconnected', () => {
 
 const app = express();
 
+// Trust proxy - important for apps behind a reverse proxy (Render, Heroku, etc)
+app.set('trust proxy', 1);
+
 // Configure CORS to accept credentials
 app.use(cors({
   credentials: true,
@@ -61,13 +69,15 @@ app.use(cors({
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+      // In production, force secure to true when sameSite is 'none'
+      // This is critical for cross-domain cookies to work
+      secure: process.env.NODE_ENV === 'production', 
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-site cookies in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     }
   })
 );
