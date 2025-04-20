@@ -39,55 +39,35 @@ mongoose.connection.on('disconnected', () => {
 
 const app = express();
 
-// CORS domains
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'https://husky-bridge.netlify.app',
-  'https://husky-bridge.netlify.com',
-  'https://husky-bridge-app.netlify.app' // Add any additional Netlify domains
-];
-
 // Configure CORS to accept credentials
 app.use(cors({
   credentials: true,
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) === -1) {
-      console.log("Origin allowed:", origin);
-      return callback(null, true);
-    } else {
-      return callback(null, true);
-    }
-  },
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://husky-bridge.netlify.app',
+    'https://husky-bridge.netlify.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
     'Set-Cookie',
-    'X-Debug-User-Role'
+    'X-Debug-User-Role'  // Add our custom debug header
   ]
 }));
-
-// Debugging middleware to log requests
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin || 'Unknown'}`);
-  next();
-});
 
 // Session configuration - must come before routes
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for better persistence
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-site cookies in production
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-site cookies in production
     }
   })
 );
