@@ -529,4 +529,43 @@ export default function PostRoutes(app) {
         }
     };
     app.put("/api/posts/:id/remove-from-my-posts", removePostFromMyPosts);
+
+    // Cancel an active collaboration (for post owner or selected participant)
+    const cancelCollaboration = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Check if user is post owner or selected participant
+            const isOwner = post.userId === currentUser._id;
+            const isSelectedParticipant = post.selectedParticipantId === currentUser._id;
+            
+            if (!isOwner && !isSelectedParticipant) {
+                return res.status(403).json({ 
+                    message: "Not authorized to cancel this collaboration" 
+                });
+            }
+
+            // Only allow cancellation in certain post statuses
+            if (post.status !== 'In Progress' && post.status !== 'Wait for Complete') {
+                return res.status(400).json({ 
+                    message: "Can only cancel active collaborations" 
+                });
+            }
+
+            const updatedPost = await dao.cancelCollaboration(req.params.id, currentUser._id);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error("Error cancelling collaboration:", error);
+            res.status(500).json({ message: "Error cancelling collaboration" });
+        }
+    };
+    app.put("/api/posts/:id/cancel-collaboration", cancelCollaboration);
 } 

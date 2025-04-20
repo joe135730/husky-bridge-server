@@ -206,4 +206,44 @@ export const findPostsByTitle = (title) => {
         console.error('Error fetching posts by title:', error);
         throw error;
     }
+};
+
+// Cancel an active collaboration (owner or selected participant)
+export const cancelCollaboration = async (postId, userId) => {
+  try {
+    const post = await findPostById(postId);
+    if (!post) return null;
+    
+    // Check if user is owner or selected participant
+    const isOwner = post.userId === userId;
+    const isSelectedParticipant = post.selectedParticipantId === userId;
+    
+    if (!isOwner && !isSelectedParticipant) {
+      throw new Error('Not authorized to cancel this collaboration');
+    }
+    
+    const participantId = isOwner 
+      ? post.selectedParticipantId  // If owner cancels, update selected participant status
+      : userId;                     // If participant cancels, update own status
+    
+    // Update status instead of removing participant
+    const updatedPost = await model.findOneAndUpdate(
+      { _id: postId, "participants.userId": participantId },
+      { 
+        $set: { 
+          selectedParticipantId: null,
+          status: 'Pending',
+          ownerCompleted: false,
+          participantCompleted: false,
+          "participants.$.status": "Pending"  // Reset the status to pending
+        }
+      },
+      { new: true }
+    );
+    
+    return updatedPost;
+  } catch (error) {
+    console.error("Error cancelling collaboration:", error);
+    throw error;
+  }
 }; 
