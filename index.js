@@ -42,7 +42,12 @@ const app = express();
 // Configure CORS to accept credentials
 app.use(cors({
   credentials: true,
-  origin: true, // Allow all origins that include credentials
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://husky-bridge.netlify.app',
+    'https://husky-bridge.netlify.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
@@ -59,10 +64,10 @@ app.use(
     resave: true,
     saveUninitialized: true,
     cookie: {
-      secure: false, // Set to true only in production with HTTPS
+      secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: 'lax' // 'lax' is more permissive than 'strict' but still secure
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-site cookies in production
     }
   })
 );
