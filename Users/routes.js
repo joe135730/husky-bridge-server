@@ -6,8 +6,13 @@ export default function UserRoutes(app) {
       const { email, password } = req.body;
       const currentUser = await dao.findUserByCredentials(email, password);
       if (currentUser) {
-        req.session["currentUser"] = currentUser;
-        res.json(currentUser);
+        // Ensure consistent role casing
+        const formattedUser = {
+          ...currentUser.toObject(),
+          role: currentUser.role.toUpperCase()
+        };
+        req.session["currentUser"] = formattedUser;
+        res.json(formattedUser);
       } else {
         res.status(401).json({ message: "Invalid credentials" });
       }
@@ -54,7 +59,13 @@ export default function UserRoutes(app) {
       // Update user with latest data from database
       try {
         const user = await dao.findUserById(currentUser._id);
-        res.json(user);
+        
+        // Ensure consistent role casing
+        const formattedUser = {
+          ...user.toObject(),
+          role: user.role.toUpperCase()
+        };
+        res.json(formattedUser);
       } catch (error) {
         console.error("Profile error:", error);
         res.status(404).json({ message: "User not found" });
@@ -75,18 +86,13 @@ export default function UserRoutes(app) {
   // Get all users
   const findAllUsers = async (req, res) => {
     try {
-      console.log("GET /api/users 請求已收到");
       const currentUser = req.session["currentUser"];
       const allUsers = await dao.findAllUsers();
       
-      console.log("獲取到的用戶列表:", allUsers);
-  
       const filteredUsers = currentUser
         ? allUsers.filter(user => user._id.toString() !== currentUser._id)
         : allUsers;
       
-      console.log("過濾後的用戶列表:", filteredUsers);
-  
       res.json(filteredUsers || []);
     } catch (err) {
       console.error("Error fetching all users:", err);
@@ -151,4 +157,68 @@ export default function UserRoutes(app) {
     }
   };
   app.delete("/api/users/:id", deleteUser);
+
+  // Add a simple endpoint to check if user is authenticated
+  const checkAuth = (req, res) => {
+    // Debug logging
+    console.log("Session in check-auth:", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      currentUser: req.session?.currentUser ? 
+        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
+    });
+    
+    if (req.session && req.session.currentUser) {
+      res.status(200).json({ 
+        authenticated: true, 
+        user: req.session.currentUser 
+      });
+    } else {
+      res.status(401).json({ 
+        authenticated: false, 
+        message: "Not authenticated" 
+      });
+    }
+  };
+  app.get("/api/auth/current", checkAuth);
+  app.get("/api/users/check-auth", checkAuth); // For backward compatibility
+  
+  // Add an admin check endpoint
+  const checkAdmin = (req, res) => {
+    // Debug logging
+    console.log("Session in admin-check:", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      currentUser: req.session?.currentUser ? 
+        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
+    });
+    
+    if (req.session && req.session.currentUser) {
+      // Case-insensitive check for admin role
+      const isAdmin = req.session.currentUser.role && 
+                     req.session.currentUser.role.toUpperCase() === 'ADMIN';
+                     
+      if (isAdmin) {
+        return res.status(200).json({ 
+          isAdmin: true, 
+          user: req.session.currentUser 
+        });
+      }
+      
+      // User is authenticated but not admin
+      return res.status(403).json({ 
+        isAdmin: false, 
+        authenticated: true,
+        message: "Not authorized as admin" 
+      });
+    }
+    
+    // Not authenticated at all
+    res.status(401).json({ 
+      isAdmin: false, 
+      authenticated: false,
+      message: "Not authenticated" 
+    });
+  };
+  app.get("/api/auth/check-admin", checkAdmin);
 }

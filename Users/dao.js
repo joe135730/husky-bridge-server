@@ -3,10 +3,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Create Users
 export const createUser = (user) => {
+    // Use the provided role or default to "STUDENT"
     const newUser = { 
         ...user, 
         _id: uuidv4(),
-        role: "STUDENT",
+        role: user.role || "STUDENT",
         lastActivity: new Date(),
         totalActivity: "0"
     };
@@ -17,9 +18,7 @@ export const findAllUsers = () => model.find();
 
 // Updated to handle UUID format
 export const findUserById = async (userId) => {
-    console.log("Looking up user with ID:", userId); // Debug log
     const user = await model.findOne({ _id: userId });
-    console.log("Found user:", user); // Debug log
     return user;
 };
 

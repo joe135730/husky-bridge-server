@@ -7,6 +7,7 @@ import session from 'express-session';
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
 import ChatRoutes from './Chat/routes.js'; // or adjust path if needed
+import ReportRoutes from './Reports/routes.js'; // Import Reports routes
 
 // Load environment variables
 try {
@@ -41,28 +42,49 @@ const app = express();
 // Configure CORS to accept credentials
 app.use(cors({
   credentials: true,
-  origin: ['http://localhost:5173', 'http://localhost:3000'] // Add your frontend URLs
+  origin: true, // Allow all origins that include credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Set-Cookie',
+    'X-Debug-User-Role'  // Add our custom debug header
+  ]
 }));
 
-// Session configuration
+// Session configuration - must come before routes
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Set to true only in production with HTTPS
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      sameSite: 'lax' // 'lax' is more permissive than 'strict' but still secure
     }
   })
 );
 
+// Parse JSON request bodies
 app.use(express.json());
 
+// Add a middleware to ensure session is available
+app.use((req, res, next) => {
+  if (!req.session) {
+    console.error('Session not initialized');
+  }
+  next();
+});
+
+// Register routes
 UserRoutes(app);
 PostRoutes(app);
 ChatRoutes(app);
+
+// Mount Reports routes with proper path
+app.use('/api', ReportRoutes);
 
 const PORT = process.env.PORT || 4000;
 
