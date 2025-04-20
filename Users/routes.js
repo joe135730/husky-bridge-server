@@ -12,6 +12,14 @@ export default function UserRoutes(app) {
           role: currentUser.role.toUpperCase()
         };
         req.session["currentUser"] = formattedUser;
+        
+        // Debug logging
+        console.log("Signin successful:", { 
+          userId: formattedUser._id,
+          sessionID: req.sessionID,
+          hasSession: !!req.session
+        });
+        
         res.json(formattedUser);
       } else {
         res.status(401).json({ message: "Invalid credentials" });
