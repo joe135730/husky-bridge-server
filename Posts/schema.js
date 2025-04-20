@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const participantSchema = new mongoose.Schema({
     userId: { type: String, required: true },
-    status: { type: String, enum: ['Pending', 'In Progress', 'Wait for Complete', 'Complete'], default: 'Pending' },
+    status: { type: String, enum: ['Pending', 'In Progress', 'Wait for Complete', 'Complete', 'Not Selected'], default: 'Pending' },
     completedAt: { type: Date, default: null }
 }, { _id: false });
 

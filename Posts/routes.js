@@ -494,4 +494,39 @@ export default function PostRoutes(app) {
         }
     };
     app.delete("/api/posts/:id/participants/:participantId", removeParticipant);
+
+    // Remove a post from My Posts (for participants who weren't selected)
+    const removePostFromMyPosts = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Check if the user is a participant
+            const isParticipant = post.participants.some(p => p.userId === currentUser._id);
+            if (!isParticipant) {
+                return res.status(403).json({ message: "Not authorized to remove this post" });
+            }
+
+            // Only allow removal if user is not the selected participant
+            if (post.selectedParticipantId === currentUser._id) {
+                return res.status(400).json({ 
+                    message: "Cannot remove post - you are the selected participant" 
+                });
+            }
+
+            const updatedPost = await dao.removePostFromMyPosts(req.params.id, currentUser._id);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error("Error removing post from My Posts:", error);
+            res.status(500).json({ message: "Error removing post from My Posts" });
+        }
+    };
+    app.put("/api/posts/:id/remove-from-my-posts", removePostFromMyPosts);
 } 

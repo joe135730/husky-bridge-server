@@ -94,21 +94,65 @@ export const addParticipant = (postId, userId) =>
     );
 
 // Select a participant (post owner accepting a participant)
-export const selectParticipant = (postId, participantId) =>
-    model.findOneAndUpdate(
-        { _id: postId },
-        { 
-            $set: { 
-                selectedParticipantId: participantId,
-                status: 'In Progress',
-                "participants.$[elem].status": 'In Progress'
-            } 
-        },
-        { 
-            new: true,
-            arrayFilters: [{ "elem.userId": participantId }]
-        }
+export const selectParticipant = async (postId, participantId) => {
+  try {
+    // First update the selected participant to In Progress
+    const post = await model.findOneAndUpdate(
+      { _id: postId },
+      { 
+        $set: { 
+          selectedParticipantId: participantId,
+          status: 'In Progress',
+          "participants.$[elem].status": 'In Progress'
+        } 
+      },
+      { 
+        new: true,
+        arrayFilters: [{ "elem.userId": participantId }]
+      }
     );
+    
+    if (!post) return null;
+
+    // Then update all other participants to Not Selected
+    return model.findOneAndUpdate(
+      { _id: postId },
+      { 
+        $set: { 
+          "participants.$[elem].status": 'Not Selected'
+        } 
+      },
+      { 
+        new: true,
+        arrayFilters: [{ "elem.userId": { $ne: participantId } }]
+      }
+    );
+  } catch (error) {
+    console.error("Error selecting participant:", error);
+    throw error;
+  }
+};
+
+// Remove a post from My Posts (for not selected participants)
+export const removePostFromMyPosts = async (postId, userId) => {
+  try {
+    return model.findOneAndUpdate(
+      { 
+        _id: postId,
+        "participants.userId": userId
+      },
+      { 
+        $pull: { 
+          participants: { userId }
+        } 
+      },
+      { new: true }
+    );
+  } catch (error) {
+    console.error("Error removing post from My Posts:", error);
+    throw error;
+  }
+};
 
 // Get all pending participants for a post
 export const getPendingParticipants = (postId) =>
