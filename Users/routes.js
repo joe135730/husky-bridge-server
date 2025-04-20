@@ -11,29 +11,38 @@ export default function UserRoutes(app) {
           ...currentUser.toObject(),
           role: currentUser.role.toUpperCase()
         };
-
-        // Store the current session ID for comparison
-        const sessionIdBefore = req.sessionID;
         
-        // Set user in session
-        req.session.currentUser = formattedUser;
-        // Save session explicitly
+        // Set user in session - ensure we're not storing unnecessary data
+        req.session.currentUser = {
+          _id: formattedUser._id,
+          firstName: formattedUser.firstName,
+          lastName: formattedUser.lastName,
+          email: formattedUser.email,
+          role: formattedUser.role,
+          profilePicture: formattedUser.profilePicture
+        };
+        
+        // Save session explicitly and ensure it completes
         await new Promise((resolve, reject) => {
           req.session.save(err => {
-            if (err) reject(err);
-            else resolve();
+            if (err) {
+              console.error("Session save error:", err);
+              reject(err);
+            } else {
+              resolve();
+            }
           });
         });
         
         // Debug logging
         console.log("Signin successful:", { 
           userId: formattedUser._id,
-          sessionIDBefore: sessionIdBefore,
-          sessionIDAfter: req.sessionID,
+          sessionID: req.sessionID,
           hasSession: !!req.session,
           sessionUser: !!req.session.currentUser
         });
         
+        // Return user info to client
         res.json(formattedUser);
       } else {
         res.status(401).json({ message: "Invalid credentials" });
@@ -85,7 +94,8 @@ export default function UserRoutes(app) {
         { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
     });
     
-    if (req.session && req.session.currentUser) {
+    // Check if session exists and has user data
+    if (req.session && req.session.currentUser && req.session.currentUser._id) {
       // Update user with latest data from database
       try {
         const user = await dao.findUserById(req.session.currentUser._id);
@@ -95,16 +105,14 @@ export default function UserRoutes(app) {
           return res.status(404).json({ message: "User not found" });
         }
         
-        // Ensure consistent role casing
+        // Ensure consistent role casing and prepare a clean user object
         const formattedUser = {
           ...user.toObject(),
           role: user.role.toUpperCase()
         };
         
-        // Refresh user data in session
-        req.session.currentUser = formattedUser;
-        await new Promise(resolve => req.session.save(resolve));
-        
+        // Don't update session unless there are actual changes
+        // This avoids unnecessary session updates which can reset the session ID
         res.json(formattedUser);
       } catch (error) {
         console.error("Profile error:", error);
@@ -299,4 +307,75 @@ export default function UserRoutes(app) {
     });
   };
   app.get("/api/auth/debug", checkAuthDebug);
+
+  // Add a detailed session debug endpoint to diagnose session issues
+  const sessionDebug = (req, res) => {
+    const sessionID = req.sessionID;
+    const cookies = req.headers.cookie;
+    const userAgent = req.headers['user-agent'];
+    
+    // Get cookie info
+    const cookieInfo = {};
+    if (cookies) {
+      const cookieArr = cookies.split(';');
+      for (const cookie of cookieArr) {
+        const [name, value] = cookie.trim().split('=');
+        cookieInfo[name] = value;
+      }
+    }
+    
+    // Log for server-side debugging
+    console.log("SESSION DEBUG:", {
+      sessionID,
+      hasSession: !!req.session,
+      authenticated: !!req.session?.currentUser,
+      cookies,
+      parsedCookies: cookieInfo,
+      userAgent
+    });
+    
+    // Collect session store info if possible
+    let storeInfo = "Not available";
+    try {
+      if (req.sessionStore) {
+        storeInfo = {
+          storeType: req.sessionStore.constructor.name,
+          ttl: req.sessionStore.ttl,
+          storeOptions: req.sessionStore.options
+        };
+      }
+    } catch (err) {
+      storeInfo = `Error getting store info: ${err.message}`;
+    }
+    
+    // Return detailed information
+    res.json({
+      sessionState: {
+        id: sessionID,
+        hasSessionObject: !!req.session,
+        cookie: req.session?.cookie || null,
+        cookieHeaders: cookieInfo,
+        store: storeInfo
+      },
+      authState: {
+        isAuthenticated: !!req.session?.currentUser,
+        userId: req.session?.currentUser?._id || null,
+        userRole: req.session?.currentUser?.role || null
+      },
+      requestInfo: {
+        ip: req.ip,
+        userAgent,
+        method: req.method,
+        url: req.originalUrl
+      },
+      timestamps: {
+        serverTime: new Date().toISOString(),
+        sessionCreated: req.session?.cookie?.expires ? 
+          new Date(req.session.cookie.expires.getTime() - req.session.cookie.maxAge).toISOString() : null,
+        sessionExpires: req.session?.cookie?.expires ? 
+          req.session.cookie.expires.toISOString() : null
+      }
+    });
+  };
+  app.get("/api/debug/session", sessionDebug);
 }
