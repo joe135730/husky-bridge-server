@@ -246,4 +246,25 @@ export const cancelCollaboration = async (postId, userId) => {
     console.error("Error cancelling collaboration:", error);
     throw error;
   }
+};
+
+// Remove a completed post from participant's view (without changing post status)
+export const removeCompletedPost = async (postId, userId) => {
+  try {
+    // Only remove the participant record, don't change post status
+    const updatedPost = await model.findOneAndUpdate(
+      { _id: postId },
+      { 
+        $pull: { 
+          participants: { userId }
+        } 
+      },
+      { new: true }
+    );
+    
+    return updatedPost;
+  } catch (error) {
+    console.error("Error removing completed post:", error);
+    throw error;
+  }
 }; 

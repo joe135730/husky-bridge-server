@@ -568,4 +568,39 @@ export default function PostRoutes(app) {
         }
     };
     app.put("/api/posts/:id/cancel-collaboration", cancelCollaboration);
+
+    // Remove a completed post from participant's view (without changing post status)
+    const removeCompletedPost = async (req, res) => {
+        try {
+            const currentUser = req.session["currentUser"];
+            if (!currentUser) {
+                return res.status(401).json({ message: "Not authenticated" });
+            }
+
+            const post = await dao.findPostById(req.params.id);
+            if (!post) {
+                return res.status(404).json({ message: "Post not found" });
+            }
+
+            // Check if the user is a participant in a completed post
+            const isParticipant = post.participants.some(p => p.userId === currentUser._id);
+            if (!isParticipant) {
+                return res.status(403).json({ message: "Not authorized to remove this post" });
+            }
+
+            // Only allow removal if the post is complete
+            if (post.status !== 'Complete') {
+                return res.status(400).json({ 
+                    message: "Only completed posts can be removed this way" 
+                });
+            }
+
+            const updatedPost = await dao.removeCompletedPost(req.params.id, currentUser._id);
+            res.json(updatedPost);
+        } catch (error) {
+            console.error("Error removing completed post:", error);
+            res.status(500).json({ message: "Error removing completed post" });
+        }
+    };
+    app.put("/api/posts/:id/remove-completed-post", removeCompletedPost);
 } 
