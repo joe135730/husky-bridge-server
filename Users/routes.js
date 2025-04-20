@@ -230,30 +230,4 @@ export default function UserRoutes(app) {
     });
   };
   app.get("/api/auth/check-admin", checkAdmin);
-
-  // Add a debug endpoint to check authentication
-  const checkAuthDebug = (req, res) => {
-    console.log("Debug Auth Info:", {
-      hasSession: !!req.session,
-      sessionID: req.sessionID,
-      hasCookie: !!req.cookies,
-      cookiesList: req.headers.cookie,
-      currentUser: req.session?.currentUser ? 
-        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
-    });
-    
-    res.json({
-      authenticated: !!req.session?.currentUser,
-      sessionInfo: {
-        id: req.sessionID,
-        hasCookie: !!req.headers.cookie,
-        hasSession: !!req.session
-      },
-      userInfo: req.session?.currentUser ? {
-        id: req.session.currentUser._id,
-        role: req.session.currentUser.role
-      } : null
-    });
-  };
-  app.get("/api/auth/debug", checkAuthDebug);
 }
