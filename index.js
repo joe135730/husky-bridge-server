@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import * as dotenv from 'dotenv';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
+import cookieParser from 'cookie-parser';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
@@ -42,13 +43,9 @@ const app = express();
 
 // Helper function to configure CORS based on environment
 const getCorsOrigins = () => {
+  // In production, allow all origins with credentials
   if (process.env.NODE_ENV === 'production') {
-    return [
-      'https://husky-bridge.netlify.app',
-      'https://husky-bridge.netlify.com',
-      /\.netlify\.app$/,  // Allow any subdomain on netlify.app
-      /\.onrender\.com$/  // Allow any subdomain on onrender.com
-    ];
+    return true; // Allow all origins with credentials
   } else {
     return ['http://localhost:5173', 'http://localhost:3000'];
   }
@@ -80,8 +77,8 @@ app.use(
       secure: process.env.NODE_ENV === 'production', // Cookies only work with HTTPS in production
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Must be 'none' for cross-site
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined // Allows subdomains to share cookie in production
+      sameSite: 'none', // Always use 'none' for cross-site cookies
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Remove domain restriction altogether
     },
     store: MongoStore.create({
       mongoUrl: CONNECTION_STRING,
@@ -94,6 +91,9 @@ app.use(
 
 // Parse JSON request bodies
 app.use(express.json());
+
+// Parse cookies
+app.use(cookieParser());
 
 // Add a middleware to ensure session is available
 app.use((req, res, next) => {
