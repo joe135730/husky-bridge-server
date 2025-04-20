@@ -71,7 +71,8 @@ export default function UserRoutes(app) {
         res.status(404).json({ message: "User not found" });
       }
     } else {
-      res.sendStatus(403);
+      // Return 401 Unauthorized instead of 403 Forbidden
+      res.status(401).json({ message: "Not authenticated" });
     }
   };
   app.post("/api/users/profile", profile);
