@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import * as dotenv from 'dotenv';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
@@ -46,29 +47,37 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000',
     'https://husky-bridge.netlify.app',
-    'https://husky-bridge.netlify.com'
+    'https://husky-bridge.netlify.com',
+    'https://husky-bridge.onrender.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
     'Authorization', 
     'Set-Cookie',
-    'X-Debug-User-Role'  // Add our custom debug header
-  ]
+    'X-Debug-User-Role'
+  ],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
 // Session configuration - must come before routes
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: true,
-    saveUninitialized: true,
+    resave: false,
+    saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-site cookies in production
-    }
+    },
+    store: MongoStore.create({
+      mongoUrl: CONNECTION_STRING,
+      ttl: 24 * 60 * 60 // 1 day
+    })
   })
 );
 
