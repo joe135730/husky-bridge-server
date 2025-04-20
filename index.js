@@ -72,20 +72,24 @@ app.use(cors({
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     name: 'husky_session',
     rolling: true,
+    genid: function(req) {
+      return req.sessionID || uuidv4();
+    },
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      path: '/'
+      path: '/',
+      domain: undefined
     },
     store: MongoStore.create({
       mongoUrl: CONNECTION_STRING,
-      ttl: 7 * 24 * 60 * 60,
+      ttl: 30 * 24 * 60 * 60,
       autoRemove: 'native',
       touchAfter: 24 * 3600,
       crypto: {
