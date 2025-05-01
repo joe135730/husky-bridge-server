@@ -138,18 +138,3 @@ backend/
 ## 📚 API Documentation
 
 API documentation is available at `/api-docs` when the server is running.
-
-## 🤝 Contributing
-
-1. Create a new branch for your feature
-2. Make your changes
-3. Write or update tests as needed
-4. Submit a pull request
-
-## 📄 License
-
-[Your License Here]
-
----
-
-For more information or support, please contact [Your Contact Information] 
