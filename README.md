@@ -1,5 +1,7 @@
 # Husky Bridge Backend
 
+Husky Bridge Frontend: https://github.com/joe135730/husky-bridge
+
 A robust backend service built with Express.js and TypeScript, providing RESTful APIs for the Husky Bridge application.
 
 ## 🚀 Tech Stack
