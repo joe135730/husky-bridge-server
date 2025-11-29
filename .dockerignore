@@ -1,0 +1,46 @@
+# Node modules (will be installed in container)
+node_modules
+npm-debug.log
+
+# Git files
+.git
+.gitignore
+.github
+
+# Environment files (should be provided at runtime)
+.env
+.env.local
+.env.*.local
+
+# Test files
+*.test.js
+**/__tests__/**
+**/test/**
+coverage
+
+# Documentation
+*.md
+TESTING_GUIDE.md
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts (if any)
+dist
+build
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+package-lock.json
+
