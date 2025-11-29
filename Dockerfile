@@ -24,7 +24,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies (smaller image)
-RUN npm ci --only=production && npm cache clean --force
+# Using --omit=dev (modern syntax) instead of deprecated --only=production
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy application source code
 COPY . .

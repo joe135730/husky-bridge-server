@@ -48,11 +48,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-build
-          path: dist
+      # Note: Backend doesn't produce dist folder (Node.js server, not a build artifact)
+      # Artifact upload removed as it's not needed for backend
 
   # Docker Build & Push Job (runs after tests pass)
   docker-build-push:

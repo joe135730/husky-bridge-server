@@ -42,5 +42,5 @@ logs
 
 # Misc
 .DS_Store
-package-lock.json
+# Note: package-lock.json is REQUIRED for npm ci, so we don't exclude it
 
