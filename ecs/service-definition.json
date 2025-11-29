@@ -1,0 +1,35 @@
+{
+  "serviceName": "husky-bridge-backend-service",
+  "cluster": "husky-bridge-cluster",
+  "taskDefinition": "husky-bridge-backend",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-XXXXXXXX",
+        "subnet-YYYYYYYY"
+      ],
+      "securityGroups": [
+        "sg-XXXXXXXX"
+      ],
+      "assignPublicIp": "ENABLED"
+    }
+  },
+  "loadBalancer": {
+    "targetGroupArn": "arn:aws:elasticloadbalancing:REGION:YOUR_ACCOUNT_ID:targetgroup/husky-bridge-backend-tg/XXXXXXXX",
+    "containerName": "husky-bridge-backend",
+    "containerPort": 4000
+  },
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "healthCheckGracePeriodSeconds": 60,
+  "enableExecuteCommand": true
+}
+

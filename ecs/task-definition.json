@@ -1,0 +1,61 @@
+{
+  "family": "husky-bridge-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "husky-bridge-backend",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/husky-bridge-backend:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 4000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "4000"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGO_CONNECTION_STRING",
+          "valueFrom": "arn:aws:secretsmanager:REGION:YOUR_ACCOUNT_ID:secret:husky-bridge/mongodb"
+        },
+        {
+          "name": "SESSION_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:REGION:YOUR_ACCOUNT_ID:secret:husky-bridge/session-secret"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/husky-bridge-backend",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://localhost:4000/api/auth/current', (r) => {process.exit(r.statusCode === 200 || r.statusCode === 401 ? 0 : 1)})\""
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
+
