@@ -34,7 +34,7 @@ export default function PostRoutes(app) {
         try {
             const posts = await dao.findAllPosts();
             res.json(posts);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error retrieving posts" });
         }
     };
@@ -50,7 +50,7 @@ export default function PostRoutes(app) {
 
             const posts = await dao.findPostsByUserId(currentUser._id);
             res.json(posts);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error retrieving user posts" });
         }
     };
@@ -66,7 +66,7 @@ export default function PostRoutes(app) {
 
             const posts = await dao.findPostsByParticipant(currentUser._id);
             res.json(posts);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error retrieving participating posts" });
         }
     };
@@ -146,7 +146,7 @@ export default function PostRoutes(app) {
                 updatedAt: new Date()
             });
             res.json(updatedPost);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error updating post" });
         }
     };
@@ -205,7 +205,7 @@ export default function PostRoutes(app) {
 
             const updatedPost = await dao.markPostAsCompletedByOwner(req.params.id);
             res.json(updatedPost);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error completing post" });
         }
     };
@@ -231,7 +231,7 @@ export default function PostRoutes(app) {
 
             const updatedPost = await dao.markPostAsCompletedByParticipant(req.params.id, currentUser._id);
             res.json(updatedPost);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error completing post" });
         }
     };
@@ -260,7 +260,7 @@ export default function PostRoutes(app) {
             }
             
             res.json(updatedPost);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error expressing interest in post" });
         }
     };
@@ -293,7 +293,7 @@ export default function PostRoutes(app) {
 
             const updatedPost = await dao.selectParticipant(req.params.id, participantId);
             res.json(updatedPost);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error selecting participant" });
         }
     };
@@ -342,7 +342,7 @@ export default function PostRoutes(app) {
         try {
             const posts = await dao.findPostsWithFilters(req.query);
             res.json(posts);
-        } catch (error) {
+        } catch (_error) {
             res.status(500).json({ message: "Error retrieving filtered posts" });
         }
     };

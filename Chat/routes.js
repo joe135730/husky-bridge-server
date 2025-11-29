@@ -1,4 +1,3 @@
-import express from "express";
 import * as dao from "./dao.js";
 
 export default function ChatRoutes(app) {
