@@ -189,16 +189,20 @@ jobs:
       - name: Update AppSpec with Task Definition
         run: |
           TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
+          echo "Task Definition ARN: $TASK_DEF_ARN"
           # Update AppSpec file - use a delimiter that won't conflict with ARN characters
           sed -i "s|PLACEHOLDER_TASK_DEF_ARN|$TASK_DEF_ARN|g" codedeploy/appspec.yml
-          # Verify the file is valid YAML
+          # Verify the file is valid YAML using yq or python
           echo "Updated AppSpec file:"
           cat codedeploy/appspec.yml
+          # Validate YAML syntax
+          python3 -c "import yaml; yaml.safe_load(open('codedeploy/appspec.yml'))" && echo "✓ YAML is valid" || (echo "✗ YAML validation failed" && exit 1)
 
       - name: Create CodeDeploy Deployment
         run: |
           # Base64 encode the AppSpec content
           APPSPEC_B64=$(cat codedeploy/appspec.yml | base64 -w 0)
+          echo "AppSpec base64 length: ${#APPSPEC_B64}"
           # Create a JSON file for the revision parameter using jq to properly construct JSON
           jq -n \
             --arg content "$APPSPEC_B64" \
@@ -209,7 +213,8 @@ jobs:
               }
             }' > /tmp/revision.json
           # Verify JSON is valid
-          cat /tmp/revision.json
+          echo "Revision JSON:"
+          cat /tmp/revision.json | jq .
           # Create deployment using JSON file
           aws deploy create-deployment \
             --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \

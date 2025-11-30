@@ -24,13 +24,30 @@ try {
 
 const CONNECTION_STRING = process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/husky-bridge";
 
+// Diagnostic logging (without exposing password)
+if (CONNECTION_STRING) {
+  const maskedConnection = CONNECTION_STRING.replace(/:([^:@]+)@/, ':****@'); // Mask password
+  console.log('MongoDB connection string configured:', maskedConnection);
+  console.log('Connection string length:', CONNECTION_STRING.length);
+  console.log('Connection string starts with mongodb:', CONNECTION_STRING.startsWith('mongodb'));
+} else {
+  console.error('MONGO_CONNECTION_STRING environment variable is not set!');
+}
+
 // MongoDB connection with logging
 mongoose.connect(CONNECTION_STRING)
   .then(() => {
-    console.log('Successfully connected to MongoDB at:', CONNECTION_STRING);
+    const maskedConnection = CONNECTION_STRING.replace(/:([^:@]+)@/, ':****@');
+    console.log('Successfully connected to MongoDB at:', maskedConnection);
   })
   .catch((error) => {
     console.error('Error connecting to MongoDB:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      errorLabels: error.errorLabels
+    });
   });
 
 // Add MongoDB connection error handling
