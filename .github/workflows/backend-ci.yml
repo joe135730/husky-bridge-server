@@ -231,16 +231,13 @@ jobs:
 
       - name: Create CodeDeploy Deployment
         run: |
-          # Read AppSpec content
+          # Read AppSpec content (raw YAML string, NOT base64 encoded)
           APPSPEC_CONTENT=$(cat codedeploy/appspec.yml)
           echo "AppSpec content:"
           echo "$APPSPEC_CONTENT"
-          # Base64 encode the AppSpec content (CodeDeploy requires base64)
-          APPSPEC_B64=$(echo -n "$APPSPEC_CONTENT" | base64 -w 0)
-          echo "AppSpec base64 length: ${#APPSPEC_B64}"
-          # Create JSON file with proper escaping using jq
+          # Create JSON file with raw YAML content (CodeDeploy expects raw string, not base64)
           jq -n \
-            --arg content "$APPSPEC_B64" \
+            --arg content "$APPSPEC_CONTENT" \
             '{
               "revisionType": "AppSpecContent",
               "appSpecContent": {
