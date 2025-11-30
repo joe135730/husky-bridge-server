@@ -7,6 +7,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:api": "newman run postman/Husky-Bridge-API.postman_collection.json -e postman/Husky-Bridge-API.postman_environment.json --reporters cli,json --reporter-json-export postman/results.json",
     "start": "node index.js",
     "lint": "eslint .",
     "build": "echo \"No build step needed for Node.js server\""
@@ -42,6 +43,7 @@
     "@vitest/ui": "^4.0.14",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
+    "newman": "^6.1.0",
     "vitest": "^4.0.14"
   }
 }

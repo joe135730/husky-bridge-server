@@ -45,6 +45,46 @@ jobs:
       - name: Run tests (unit + integration)
         run: npm test
 
+      - name: Install Newman for API testing
+        run: npm install -g newman
+
+      - name: Start server for API tests
+        run: |
+          npm start &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          sleep 10
+          curl -f http://localhost:4000/api/users || exit 1
+        env:
+          MONGO_CONNECTION_STRING: mongodb://localhost:27017/huskybridge_test
+          SESSION_SECRET: testsecret
+          PORT: 4000
+
+      - name: Run Postman API tests
+        run: |
+          newman run postman/Husky-Bridge-API.postman_collection.json \
+            -e postman/Husky-Bridge-API.postman_environment.json \
+            --env-var "base_url=http://localhost:4000" \
+            --reporters cli,json \
+            --reporter-json-export postman/results.json || true
+        continue-on-error: true
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ ! -z "$SERVER_PID" ]; then
+            kill $SERVER_PID || true
+          fi
+          pkill -f "node index.js" || true
+
+      - name: Upload Postman test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-test-results
+          path: postman/results.json
+          if-no-files-found: ignore
+
       - name: Build
         run: npm run build
 

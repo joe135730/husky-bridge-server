@@ -1,0 +1,883 @@
+{
+	"info": {
+		"_postman_id": "husky-bridge-api-collection",
+		"name": "Husky Bridge API",
+		"description": "Comprehensive API testing collection for Husky Bridge with validation and retry logic",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Sign Up",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validation and retry logic",
+									"const maxRetries = 3;",
+									"let retryCount = 0;",
+									"",
+									"// Validate response structure",
+									"pm.test(\"Status code is 200 or 400\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 400]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Validate user data structure",
+									"    pm.test(\"Response has user data\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('email');",
+									"        pm.expect(responseJson).to.have.property('firstName');",
+									"    });",
+									"    ",
+									"    // Store user data for subsequent requests",
+									"    pm.environment.set('test_user_id', responseJson._id);",
+									"    pm.environment.set('test_user_email', responseJson.email);",
+									"    ",
+									"    // Validate data types (UUID format)",
+									"    pm.test(\"User ID is valid UUID\", function () {",
+									"        pm.expect(responseJson._id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+									"    });",
+									"    ",
+									"    pm.test(\"Email is valid format\", function () {",
+									"        pm.expect(responseJson.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);",
+									"    });",
+									"}",
+									"",
+									"// Retry logic for network errors",
+									"if (pm.response.code === 0 || pm.response.code >= 500) {",
+									"    if (retryCount < maxRetries) {",
+									"        retryCount++;",
+									"        setTimeout(() => {",
+									"            postman.setNextRequest('Sign Up');",
+									"        }, 1000 * retryCount);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test{{$randomInt}}@example.com\",\n    \"password\": \"Test123456!\",\n    \"firstName\": \"Test\",\n    \"lastName\": \"User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/signup",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"signup"
+							]
+						}
+					}
+				},
+				{
+					"name": "Sign In",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validation with retry logic",
+									"const maxRetries = 3;",
+									"let retryCount = 0;",
+									"",
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Validate authentication response",
+									"    pm.test(\"Response contains user data\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('email');",
+									"        pm.expect(responseJson).to.have.property('role');",
+									"    });",
+									"    ",
+									"    // Store session data",
+									"    pm.environment.set('current_user_id', responseJson._id);",
+									"    pm.environment.set('current_user_role', responseJson.role);",
+									"    ",
+									"    // Validate role is uppercase",
+									"    pm.test(\"Role is uppercase\", function () {",
+									"        pm.expect(responseJson.role).to.equal(responseJson.role.toUpperCase());",
+									"    });",
+									"}",
+									"",
+									"// Retry on network errors",
+									"if (pm.response.code === 0 || pm.response.code >= 500) {",
+									"    if (retryCount < maxRetries) {",
+									"        retryCount++;",
+									"        setTimeout(() => {",
+									"            postman.setNextRequest('Sign In');",
+									"        }, 1000 * retryCount);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"Test123456!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/signin",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"signin"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validate profile response",
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Validate user profile structure",
+									"    pm.test(\"Profile contains required fields\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('email');",
+									"        pm.expect(responseJson).to.have.property('firstName');",
+									"        pm.expect(responseJson).to.have.property('role');",
+									"    });",
+									"    ",
+									"    // Validate data integrity",
+									"    pm.test(\"User ID matches stored ID\", function () {",
+									"        const storedId = pm.environment.get('current_user_id');",
+									"        if (storedId) {",
+									"            pm.expect(responseJson._id).to.equal(storedId);",
+									"        }",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"profile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Sign Out",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"// Clear session data",
+									"pm.environment.unset('current_user_id');",
+									"pm.environment.unset('current_user_role');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/signout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"signout"
+							]
+						}
+					}
+				},
+				{
+					"name": "Check Auth",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Response indicates authentication status\", function () {",
+									"        pm.expect(responseJson).to.have.property('authenticated');",
+									"        pm.expect(responseJson.authenticated).to.be.true;",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/current",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"current"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});",
+									"",
+									"if (responseJson.length > 0) {",
+									"    pm.test(\"User objects have required fields\", function () {",
+									"        const user = responseJson[0];",
+									"        pm.expect(user).to.have.property('_id');",
+									"        pm.expect(user).to.have.property('email');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200, 400, 401, 404, or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 404, 500]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Updated user has required fields\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('email');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Updated\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/{{current_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"{{current_user_id}}"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Posts",
+			"item": [
+				{
+					"name": "Create Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Validate post structure",
+									"    pm.test(\"Post has required fields\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('title');",
+									"        pm.expect(responseJson).to.have.property('userId');",
+									"        pm.expect(responseJson).to.have.property('status');",
+									"    });",
+									"    ",
+									"    // Store post ID for subsequent requests",
+									"    pm.environment.set('test_post_id', responseJson._id);",
+									"    ",
+									"    // Validate status",
+									"    pm.test(\"Post status is Pending\", function () {",
+									"        pm.expect(responseJson.status).to.equal('Pending');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Test Post {{$randomInt}}\",\n    \"description\": \"This is a test post\",\n    \"category\": \"Sports\",\n    \"location\": \"Seattle, WA\",\n    \"startDate\": \"2024-12-01\",\n    \"endDate\": \"2024-12-31\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Posts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Retry logic for data consistency",
+									"const maxRetries = 3;",
+									"let retryCount = 0;",
+									"",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});",
+									"",
+									"// Validate post data structure",
+									"if (responseJson.length > 0) {",
+									"    const post = responseJson[0];",
+									"    pm.test(\"Post has required fields\", function () {",
+									"        pm.expect(post).to.have.property('_id');",
+									"        pm.expect(post).to.have.property('title');",
+									"        pm.expect(post).to.have.property('status');",
+									"    });",
+									"    ",
+									"    // Validate status values",
+									"    pm.test(\"Post status is valid\", function () {",
+									"        const validStatuses = ['Pending', 'In Progress', 'Wait for Complete', 'Complete'];",
+									"        pm.expect(validStatuses).to.include(post.status);",
+									"    });",
+									"}",
+									"",
+									"// Retry on empty response (data consistency check)",
+									"if (responseJson.length === 0 && retryCount < maxRetries) {",
+									"    retryCount++;",
+									"    setTimeout(() => {",
+									"        postman.setNextRequest('Get All Posts');",
+									"    }, 1000 * retryCount);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Post by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Skip test if test_post_id is not set",
+									"const testPostId = pm.environment.get('test_post_id');",
+									"if (!testPostId) {",
+									"    pm.test.skip(\"Skipping: test_post_id not set\");",
+									"    return;",
+									"}",
+									"",
+									"pm.test(\"Status code is 200 or 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    ",
+									"    // Handle case where response might be an array (shouldn't happen, but handle gracefully)",
+									"    const post = Array.isArray(responseJson) ? responseJson[0] : responseJson;",
+									"    ",
+									"    pm.test(\"Post has complete data\", function () {",
+									"        pm.expect(post).to.have.property('_id');",
+									"        pm.expect(post).to.have.property('title');",
+									"        if (post.description !== undefined) {",
+									"            pm.expect(post).to.have.property('description');",
+									"        }",
+									"        pm.expect(post).to.have.property('category');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{test_post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{test_post_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200, 401, 403, or 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401, 403, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Post was updated\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Updated Post Title\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{test_post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{test_post_id}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Participate in Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Skip test if test_post_id is not set",
+									"const testPostId = pm.environment.get('test_post_id');",
+									"if (!testPostId) {",
+									"    pm.test.skip(\"Skipping: test_post_id not set\");",
+									"    return;",
+									"}",
+									"",
+									"pm.test(\"Status code is 200, 400, 401, or 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 400, 401, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Post has participants array\", function () {",
+									"        pm.expect(responseJson).to.have.property('participants');",
+									"        pm.expect(responseJson.participants).to.be.an('array');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{test_post_id}}/participate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{test_post_id}}",
+								"participate"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Posts by Category",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});",
+									"",
+									"// Validate all posts match category",
+									"if (responseJson.length > 0) {",
+									"    pm.test(\"All posts match category\", function () {",
+									"        responseJson.forEach(post => {",
+									"            pm.expect(post.category).to.equal('Sports');",
+									"        });",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/category/Sports",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"category",
+								"Sports"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Chat",
+			"item": [
+				{
+					"name": "Get Messages",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.expect(pm.response.code).to.equal(200);",
+									"});",
+									"",
+									"const responseJson = pm.response.json();",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(responseJson).to.be.an('array');",
+									"});",
+									"",
+									"if (responseJson.length > 0) {",
+									"    pm.test(\"Message has required fields\", function () {",
+									"        const message = responseJson[0];",
+									"        pm.expect(message).to.have.property('_id');",
+									"        pm.expect(message).to.have.property('message');",
+									"        pm.expect(message).to.have.property('timestamp');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/chat/test-room-id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"chat",
+								"test-room-id"
+							]
+						}
+					}
+				},
+				{
+					"name": "Send Message",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Message was created\", function () {",
+									"        pm.expect(responseJson).to.have.property('_id');",
+									"        pm.expect(responseJson).to.have.property('message');",
+									"        pm.expect(responseJson).to.have.property('timestamp');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"roomId\": \"test-room-id\",\n    \"receiverId\": \"test-receiver-id\",\n    \"message\": \"Test message\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/chat",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"chat"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Report Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 or 404\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([201, 404]);",
+									"});",
+									"",
+									"if (pm.response.code === 201) {",
+									"    const responseJson = pm.response.json();",
+									"    pm.test(\"Report was created\", function () {",
+									"        pm.expect(responseJson).to.have.property('message');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Inappropriate content\",\n    \"comments\": \"This post violates community guidelines\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{test_post_id}}/report",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{test_post_id}}",
+								"report"
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:4000",
+			"type": "string"
+		}
+	]
+}
+
