@@ -141,9 +141,8 @@ jobs:
       - name: Register ECS Task Definition
         id: register-task
         run: |
-          echo '${{ steps.task-def.outputs.task-definition }}' > /tmp/task-definition.json
           TASK_DEF_ARN=$(aws ecs register-task-definition \
-            --cli-input-json file:///tmp/task-definition.json \
+            --cli-input-json file://${{ steps.task-def.outputs.task-definition }} \
             --region ${{ secrets.AWS_REGION }} \
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
