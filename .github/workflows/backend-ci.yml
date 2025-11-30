@@ -138,13 +138,22 @@ jobs:
             NODE_ENV=production
             PORT=4000
 
-      - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: husky-bridge-backend-service
-          cluster: husky-bridge-cluster
-          wait-for-service-stability: true
+      - name: Register ECS Task Definition
+        id: register-task
+        run: |
+          echo '${{ steps.task-def.outputs.task-definition }}' > /tmp/task-definition.json
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/task-definition.json \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          echo "task-def-arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          echo "Registered task definition: $TASK_DEF_ARN"
+
+      - name: Update AppSpec with Task Definition
+        run: |
+          TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
+          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|$TASK_DEF_ARN|" codedeploy/appspec.yml
 
       - name: Create CodeDeploy Deployment
         run: |
