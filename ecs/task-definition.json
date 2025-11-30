@@ -4,12 +4,12 @@
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
-  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
-  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskRole",
+  "executionRoleArn": "arn:aws:iam::723977204603:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::723977204603:role/ecsTaskRole",
   "containerDefinitions": [
     {
       "name": "husky-bridge-backend",
-      "image": "YOUR_ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/husky-bridge-backend:latest",
+      "image": "723977204603.dkr.ecr.us-east-2.amazonaws.com/husky-bridge-backend:latest",
       "essential": true,
       "portMappings": [
         {
@@ -25,23 +25,21 @@
         {
           "name": "PORT",
           "value": "4000"
-        }
-      ],
-      "secrets": [
+        },
         {
           "name": "MONGO_CONNECTION_STRING",
-          "valueFrom": "arn:aws:secretsmanager:REGION:YOUR_ACCOUNT_ID:secret:husky-bridge/mongodb"
+          "value": "mongodb+srv://joe135730:+Joe19990123@husky-bridge.et7o6pl.mongodb.net/husky-bridge?appName=husky-bridge"
         },
         {
           "name": "SESSION_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:REGION:YOUR_ACCOUNT_ID:secret:husky-bridge/session-secret"
+          "value": "c071c1cd265411c1458c8f3f6f7e1a6502aa4f111732390ef07f8c1a5541ecfa"
         }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
           "awslogs-group": "/ecs/husky-bridge-backend",
-          "awslogs-region": "REGION",
+          "awslogs-region": "us-east-2",
           "awslogs-stream-prefix": "ecs"
         }
       },
