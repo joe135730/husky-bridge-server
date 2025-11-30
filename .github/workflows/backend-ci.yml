@@ -57,6 +57,9 @@ jobs:
     needs: build-test  # Only run if tests pass
     if: github.event_name == 'push'  # Only push on direct pushes, not PRs
     
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+    
     permissions:
       contents: read
 
