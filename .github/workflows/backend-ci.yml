@@ -171,9 +171,6 @@ jobs:
           task-definition: ecs/task-definition.json
           container-name: husky-bridge-backend
           image: ${{ steps.set-image.outputs.image }}
-          environment-variables: |
-            NODE_ENV=production
-            PORT=4000
 
       - name: Register ECS Task Definition
         id: register-task
@@ -190,8 +187,8 @@ jobs:
         run: |
           TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
           echo "Task Definition ARN: $TASK_DEF_ARN"
-          # Update AppSpec file - use a delimiter that won't conflict with ARN characters
-          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|$TASK_DEF_ARN|g" codedeploy/appspec.yml
+          # Update AppSpec file - quote the ARN to ensure YAML safety
+          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|\"$TASK_DEF_ARN\"|g" codedeploy/appspec.yml
           # Verify the file is valid YAML using yq or python
           echo "Updated AppSpec file:"
           cat codedeploy/appspec.yml
@@ -200,25 +197,17 @@ jobs:
 
       - name: Create CodeDeploy Deployment
         run: |
-          # Base64 encode the AppSpec content
-          APPSPEC_B64=$(cat codedeploy/appspec.yml | base64 -w 0)
+          # Read AppSpec content and ensure it's properly formatted
+          APPSPEC_CONTENT=$(cat codedeploy/appspec.yml)
+          echo "AppSpec content:"
+          echo "$APPSPEC_CONTENT"
+          # Base64 encode the AppSpec content (CodeDeploy requires base64)
+          APPSPEC_B64=$(echo "$APPSPEC_CONTENT" | base64 -w 0)
           echo "AppSpec base64 length: ${#APPSPEC_B64}"
-          # Create a JSON file for the revision parameter using jq to properly construct JSON
-          jq -n \
-            --arg content "$APPSPEC_B64" \
-            '{
-              "revisionType": "AppSpecContent",
-              "appSpecContent": {
-                "content": $content
-              }
-            }' > /tmp/revision.json
-          # Verify JSON is valid
-          echo "Revision JSON:"
-          cat /tmp/revision.json | jq .
-          # Create deployment using JSON file
+          # Create deployment using direct CLI parameters (more reliable than JSON file)
           aws deploy create-deployment \
             --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
             --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
-            --revision file:///tmp/revision.json \
+            --revision "revisionType=AppSpecContent,appSpecContent={content=$APPSPEC_B64}" \
             --description "Deployment from GitHub Actions - ${{ github.sha }}" \
             --region ${{ secrets.AWS_REGION }}
