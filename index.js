@@ -54,7 +54,9 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000',
     'https://husky-bridge.netlify.app',
-    'https://husky-bridge.netlify.com'
+    'https://husky-bridge.netlify.com',
+    'http://husky-bridge-alb-384228871.us-east-2.elb.amazonaws.com',
+    /^http:\/\/husky-bridge-alb-.*\.us-east-2\.elb\.amazonaws\.com$/
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
