@@ -27,12 +27,14 @@
           "value": "4000"
         },
         {
-          "name": "MONGO_CONNECTION_STRING",
-          "value": "mongodb+srv://joe135730:+Joe19990123@husky-bridge.et7o6pl.mongodb.net/husky-bridge?appName=husky-bridge"
-        },
-        {
           "name": "SESSION_SECRET",
           "value": "c071c1cd265411c1458c8f3f6f7e1a6502aa4f111732390ef07f8c1a5541ecfa"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGO_CONNECTION_STRING",
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:723977204603:secret:husky-bridge/mongodb-connection-RryBgX"
         }
       ],
       "logConfiguration": {
