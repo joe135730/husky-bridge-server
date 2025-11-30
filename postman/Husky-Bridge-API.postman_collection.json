@@ -16,9 +16,7 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Validation and retry logic",
-									"const maxRetries = 3;",
-									"let retryCount = 0;",
+									"// Validation tests (retry logic removed for CI/CD - handled by Newman)",
 									"",
 									"// Validate response structure",
 									"pm.test(\"Status code is 200 or 400\", function () {",
@@ -47,16 +45,6 @@
 									"    pm.test(\"Email is valid format\", function () {",
 									"        pm.expect(responseJson.email).to.match(/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/);",
 									"    });",
-									"}",
-									"",
-									"// Retry logic for network errors",
-									"if (pm.response.code === 0 || pm.response.code >= 500) {",
-									"    if (retryCount < maxRetries) {",
-									"        retryCount++;",
-									"        setTimeout(() => {",
-									"            postman.setNextRequest('Sign Up');",
-									"        }, 1000 * retryCount);",
-									"    }",
 									"}"
 								],
 								"type": "text/javascript"
@@ -95,9 +83,7 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Validation with retry logic",
-									"const maxRetries = 3;",
-									"let retryCount = 0;",
+									"// Validation tests (retry logic removed for CI/CD)",
 									"",
 									"pm.test(\"Status code is 200 or 401\", function () {",
 									"    pm.expect(pm.response.code).to.be.oneOf([200, 401]);",
@@ -121,16 +107,6 @@
 									"    pm.test(\"Role is uppercase\", function () {",
 									"        pm.expect(responseJson.role).to.equal(responseJson.role.toUpperCase());",
 									"    });",
-									"}",
-									"",
-									"// Retry on network errors",
-									"if (pm.response.code === 0 || pm.response.code >= 500) {",
-									"    if (retryCount < maxRetries) {",
-									"        retryCount++;",
-									"        setTimeout(() => {",
-									"            postman.setNextRequest('Sign In');",
-									"        }, 1000 * retryCount);",
-									"    }",
 									"}"
 								],
 								"type": "text/javascript"
@@ -456,9 +432,7 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"// Retry logic for data consistency",
-									"const maxRetries = 3;",
-									"let retryCount = 0;",
+									"// Validation tests (retry logic removed for CI/CD)",
 									"",
 									"pm.test(\"Status code is 200\", function () {",
 									"    pm.expect(pm.response.code).to.equal(200);",
@@ -484,14 +458,6 @@
 									"        const validStatuses = ['Pending', 'In Progress', 'Wait for Complete', 'Complete'];",
 									"        pm.expect(validStatuses).to.include(post.status);",
 									"    });",
-									"}",
-									"",
-									"// Retry on empty response (data consistency check)",
-									"if (responseJson.length === 0 && retryCount < maxRetries) {",
-									"    retryCount++;",
-									"    setTimeout(() => {",
-									"        postman.setNextRequest('Get All Posts');",
-									"    }, 1000 * retryCount);",
 									"}"
 								],
 								"type": "text/javascript"
