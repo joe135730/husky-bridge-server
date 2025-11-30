@@ -34,7 +34,7 @@
       "secrets": [
         {
           "name": "MONGO_CONNECTION_STRING",
-          "valueFrom": "arn:aws:secretsmanager:us-east-2:723977204603:secret:husky-bridge/mongodb-connection-RryBgX"
+          "valueFrom": "arn:aws:secretsmanager:us-east-2:723977204603:secret:husky-bridge/mongodb-connection-RryBgX:MONGO_CONNECTION_STRING::"
         }
       ],
       "logConfiguration": {

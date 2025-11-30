@@ -189,12 +189,29 @@ jobs:
       - name: Update AppSpec with Task Definition
         run: |
           TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
-          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|$TASK_DEF_ARN|" codedeploy/appspec.yml
+          # Update AppSpec file - use a delimiter that won't conflict with ARN characters
+          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|$TASK_DEF_ARN|g" codedeploy/appspec.yml
+          # Verify the file is valid YAML
+          echo "Updated AppSpec file:"
+          cat codedeploy/appspec.yml
 
       - name: Create CodeDeploy Deployment
         run: |
+          # Base64 encode the AppSpec content
+          APPSPEC_B64=$(cat codedeploy/appspec.yml | base64 -w 0)
+          # Create a JSON file for the revision parameter
+          cat > /tmp/revision.json << EOF
+          {
+            "revisionType": "AppSpecContent",
+            "appSpecContent": {
+              "content": "$APPSPEC_B64"
+            }
+          }
+          EOF
+          # Create deployment using JSON file
           aws deploy create-deployment \
             --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
             --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
-            --revision revisionType=AppSpecContent,appSpecContent={content="$(cat codedeploy/appspec.yml | base64 -w 0)"} \
-            --description "Deployment from GitHub Actions - ${{ github.sha }}"
+            --revision file:///tmp/revision.json \
+            --description "Deployment from GitHub Actions - ${{ github.sha }}" \
+            --region ${{ secrets.AWS_REGION }}
