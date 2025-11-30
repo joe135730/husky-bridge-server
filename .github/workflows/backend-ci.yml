@@ -187,28 +187,46 @@ jobs:
         run: |
           TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
           echo "Task Definition ARN: $TASK_DEF_ARN"
-          # Update AppSpec file - replace quoted placeholder with quoted ARN
-          sed -i "s|\"PLACEHOLDER_TASK_DEF_ARN\"|\"$TASK_DEF_ARN\"|g" codedeploy/appspec.yml
-          # Verify the file is valid YAML using yq or python
-          echo "Updated AppSpec file:"
-          cat codedeploy/appspec.yml
-          # Validate YAML syntax and structure
-          python3 << 'EOF'
+          # Generate AppSpec YAML directly using Python to avoid sed issues
+          python3 << EOF
           import yaml
           import sys
-          try:
-              with open('codedeploy/appspec.yml', 'r') as f:
-                  data = yaml.safe_load(f)
-              print("✓ YAML is valid")
-              print(f"Version: {data.get('version')}")
-              print(f"Resources count: {len(data.get('Resources', []))}")
-              if data.get('Resources'):
-                  target = data['Resources'][0].get('TargetService', {})
-                  props = target.get('Properties', {})
-                  print(f"TaskDefinition: {props.get('TaskDefinition', 'NOT FOUND')}")
-          except Exception as e:
-              print(f"✗ YAML validation failed: {e}")
-              sys.exit(1)
+          
+          appspec = {
+              'version': 0.0,
+              'Resources': [
+                  {
+                      'TargetService': {
+                          'Type': 'AWS::ECS::Service',
+                          'Properties': {
+                              'TaskDefinition': '$TASK_DEF_ARN',
+                              'LoadBalancerInfo': {
+                                  'ContainerName': 'husky-bridge-backend',
+                                  'ContainerPort': 4000
+                              },
+                              'PlatformVersion': 'LATEST'
+                          }
+                      }
+                  }
+              ]
+          }
+          
+          # Write to file
+          with open('codedeploy/appspec.yml', 'w') as f:
+              yaml.dump(appspec, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+          
+          # Verify it's valid
+          with open('codedeploy/appspec.yml', 'r') as f:
+              data = yaml.safe_load(f)
+          
+          print("✓ AppSpec YAML generated and validated")
+          print(f"Version: {data.get('version')}")
+          print(f"TaskDefinition: {data['Resources'][0]['TargetService']['Properties']['TaskDefinition']}")
+          
+          # Show the file content
+          print("\nAppSpec file content:")
+          with open('codedeploy/appspec.yml', 'r') as f:
+              print(f.read())
           EOF
 
       - name: Create CodeDeploy Deployment
