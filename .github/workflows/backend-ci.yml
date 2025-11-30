@@ -187,27 +187,54 @@ jobs:
         run: |
           TASK_DEF_ARN="${{ steps.register-task.outputs.task-def-arn }}"
           echo "Task Definition ARN: $TASK_DEF_ARN"
-          # Update AppSpec file - quote the ARN to ensure YAML safety
-          sed -i "s|PLACEHOLDER_TASK_DEF_ARN|\"$TASK_DEF_ARN\"|g" codedeploy/appspec.yml
+          # Update AppSpec file - replace quoted placeholder with quoted ARN
+          sed -i "s|\"PLACEHOLDER_TASK_DEF_ARN\"|\"$TASK_DEF_ARN\"|g" codedeploy/appspec.yml
           # Verify the file is valid YAML using yq or python
           echo "Updated AppSpec file:"
           cat codedeploy/appspec.yml
-          # Validate YAML syntax
-          python3 -c "import yaml; yaml.safe_load(open('codedeploy/appspec.yml'))" && echo "✓ YAML is valid" || (echo "✗ YAML validation failed" && exit 1)
+          # Validate YAML syntax and structure
+          python3 << 'EOF'
+          import yaml
+          import sys
+          try:
+              with open('codedeploy/appspec.yml', 'r') as f:
+                  data = yaml.safe_load(f)
+              print("✓ YAML is valid")
+              print(f"Version: {data.get('version')}")
+              print(f"Resources count: {len(data.get('Resources', []))}")
+              if data.get('Resources'):
+                  target = data['Resources'][0].get('TargetService', {})
+                  props = target.get('Properties', {})
+                  print(f"TaskDefinition: {props.get('TaskDefinition', 'NOT FOUND')}")
+          except Exception as e:
+              print(f"✗ YAML validation failed: {e}")
+              sys.exit(1)
+          EOF
 
       - name: Create CodeDeploy Deployment
         run: |
-          # Read AppSpec content and ensure it's properly formatted
+          # Read AppSpec content
           APPSPEC_CONTENT=$(cat codedeploy/appspec.yml)
           echo "AppSpec content:"
           echo "$APPSPEC_CONTENT"
           # Base64 encode the AppSpec content (CodeDeploy requires base64)
-          APPSPEC_B64=$(echo "$APPSPEC_CONTENT" | base64 -w 0)
+          APPSPEC_B64=$(echo -n "$APPSPEC_CONTENT" | base64 -w 0)
           echo "AppSpec base64 length: ${#APPSPEC_B64}"
-          # Create deployment using direct CLI parameters (more reliable than JSON file)
+          # Create JSON file with proper escaping using jq
+          jq -n \
+            --arg content "$APPSPEC_B64" \
+            '{
+              "revisionType": "AppSpecContent",
+              "appSpecContent": {
+                "content": $content
+              }
+            }' > /tmp/revision.json
+          echo "Revision JSON:"
+          cat /tmp/revision.json
+          # Create deployment using JSON file
           aws deploy create-deployment \
             --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
             --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
-            --revision "revisionType=AppSpecContent,appSpecContent={content=$APPSPEC_B64}" \
+            --revision file:///tmp/revision.json \
             --description "Deployment from GitHub Actions - ${{ github.sha }}" \
             --region ${{ secrets.AWS_REGION }}
