@@ -115,13 +115,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image URI
+        id: set-image
+        run: |
+          ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+          IMAGE_URI="${ECR_REGISTRY}/husky-bridge-backend:${{ github.sha }}"
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          echo "Using image: ${IMAGE_URI}"
+
       - name: Update ECS Task Definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: ecs/task-definition.json
           container-name: husky-bridge-backend
-          image: ${{ needs.docker-build-push.outputs.image }}
+          image: ${{ steps.set-image.outputs.image }}
           environment-variables: |
             NODE_ENV=production
             PORT=4000
