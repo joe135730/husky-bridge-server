@@ -194,7 +194,7 @@ jobs:
       - name: Create CodeDeploy Deployment
         run: |
           aws deploy create-deployment \
-            --application-name husky-bridge-backend-app \
-            --deployment-group-name husky-bridge-backend-dg \
+            --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
+            --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
             --revision revisionType=AppSpecContent,appSpecContent={content="$(cat codedeploy/appspec.yml | base64 -w 0)"} \
             --description "Deployment from GitHub Actions - ${{ github.sha }}"
