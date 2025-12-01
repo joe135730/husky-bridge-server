@@ -15,8 +15,8 @@ try {
   console.log("Environment variables loaded successfully");
   console.log("NODE_ENV:", process.env.NODE_ENV);
   console.log("Session cookie settings:", {
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    secure: false, // HTTP (not HTTPS) - cookies won't work with secure: true
+    sameSite: 'lax' // Works with HTTP, use 'none' only with HTTPS
   });
 } catch (error) {
   console.error("Error loading environment variables:", error);
@@ -91,12 +91,15 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      // In production, force secure to true when sameSite is 'none'
-      // This is critical for cross-domain cookies to work
-      secure: process.env.NODE_ENV === 'production', 
+      // Note: secure should be true only when using HTTPS
+      // Since ALB is using HTTP (port 80), we set secure to false
+      // If you enable HTTPS on ALB later, change this to true
+      secure: false, // Set to false for HTTP, true for HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+      // sameSite: 'none' requires secure: true (HTTPS only)
+      // For HTTP, use 'lax' which works for same-origin requests
+      sameSite: 'lax' // Use 'lax' for HTTP, 'none' for HTTPS with cross-domain
     }
   })
 );
