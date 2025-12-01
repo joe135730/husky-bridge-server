@@ -12,6 +12,22 @@ export default function UserRoutes(app) {
           role: currentUser.role.toUpperCase()
         };
         req.session["currentUser"] = formattedUser;
+        
+        // Debug logging
+        console.log("Signin successful:", {
+          userId: formattedUser._id,
+          email: formattedUser.email,
+          sessionID: req.sessionID,
+          hasSession: !!req.session
+        });
+        
+        // Explicitly save session (though resave: false should handle this)
+        req.session.save((err) => {
+          if (err) {
+            console.error("Session save error:", err);
+          }
+        });
+        
         res.json(formattedUser);
       } else {
         res.status(401).json({ message: "Invalid credentials" });
@@ -54,6 +70,14 @@ export default function UserRoutes(app) {
 
   // Profile - Get current user from session
   const profile = async (req, res) => {
+    // Debug logging
+    console.log("Profile endpoint called:", {
+      hasSession: !!req.session,
+      sessionID: req.sessionID,
+      hasCurrentUser: !!req.session["currentUser"],
+      cookies: req.headers.cookie ? 'present' : 'missing'
+    });
+    
     const currentUser = req.session["currentUser"];
     if (currentUser) {
       // Update user with latest data from database
@@ -72,7 +96,15 @@ export default function UserRoutes(app) {
       }
     } else {
       // Return 401 Unauthorized instead of 403 Forbidden
-      res.status(401).json({ message: "Not authenticated" });
+      // More detailed error for debugging
+      res.status(401).json({ 
+        message: "Not authenticated",
+        debug: {
+          hasSession: !!req.session,
+          sessionID: req.sessionID,
+          cookies: req.headers.cookie ? 'present' : 'missing'
+        }
+      });
     }
   };
   app.post("/api/users/profile", profile);

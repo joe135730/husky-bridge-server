@@ -90,6 +90,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "your_session_secret",
     resave: false,
     saveUninitialized: false,
+    name: 'connect.sid', // Explicit session cookie name
     cookie: {
       // Note: secure should be true only when using HTTPS
       // Since ALB is using HTTP (port 80), we set secure to false
@@ -99,7 +100,9 @@ app.use(
       maxAge: 24 * 60 * 60 * 1000, // 1 day
       // sameSite: 'none' requires secure: true (HTTPS only)
       // For HTTP, use 'lax' which works for same-origin requests
-      sameSite: 'lax' // Use 'lax' for HTTP, 'none' for HTTPS with cross-domain
+      sameSite: 'lax', // Use 'lax' for HTTP, 'none' for HTTPS with cross-domain
+      // Don't set domain - let browser use default (current domain)
+      // path: '/' is default, which is correct
     }
   })
 );
