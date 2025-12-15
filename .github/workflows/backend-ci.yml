@@ -9,6 +9,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    # This job runs on both PRs and pushes
+    # On PRs: Only runs tests (no deployment)
+    # On push to main: Runs tests, then triggers deployment
 
     services:
       mongo:
@@ -29,6 +32,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        # For PRs, checkout the PR branch merged with base branch
+        with:
+          fetch-depth: 0  # Fetch full history for better context
 
       - name: Use Node.js 20
         uses: actions/setup-node@v4
@@ -229,6 +235,46 @@ jobs:
               print(f.read())
           EOF
 
+      - name: Wait for Active Deployments to Complete
+        run: |
+          APP_NAME="AppECS-husky-bridge-cluster-husky-bridge-backend-service"
+          DG_NAME="AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg"
+          MAX_WAIT_TIME=2100  # 35 minutes (30 min deployment + 5 min buffer)
+          WAIT_INTERVAL=30    # Check every 30 seconds (reduces API calls)
+          ELAPSED=0
+          
+          echo "Checking for active deployments..."
+          echo "Will wait up to ${MAX_WAIT_TIME}s (${MAX_WAIT_TIME}/60 minutes) for active deployments to complete"
+          
+          while [ $ELAPSED -lt $MAX_WAIT_TIME ]; do
+            ACTIVE_DEPLOYMENTS=$(aws deploy list-deployments \
+              --application-name "$APP_NAME" \
+              --deployment-group-name "$DG_NAME" \
+              --include-only-statuses Created InProgress Queued Ready \
+              --region ${{ secrets.AWS_REGION }} \
+              --query 'deployments' \
+              --output text 2>/dev/null || echo "")
+            
+            if [ -z "$ACTIVE_DEPLOYMENTS" ] || [ "$ACTIVE_DEPLOYMENTS" = "None" ]; then
+              echo "✓ No active deployments found. Proceeding..."
+              break
+            fi
+            
+            MINUTES=$((ELAPSED / 60))
+            SECONDS=$((ELAPSED % 60))
+            MAX_MINUTES=$((MAX_WAIT_TIME / 60))
+            echo "Active deployment(s) found: $ACTIVE_DEPLOYMENTS"
+            echo "Waiting for deployment(s) to complete... (${MINUTES}m ${SECONDS}s / ${MAX_MINUTES}m)"
+            sleep $WAIT_INTERVAL
+            ELAPSED=$((ELAPSED + WAIT_INTERVAL))
+          done
+          
+          if [ $ELAPSED -ge $MAX_WAIT_TIME ]; then
+            echo "⚠ Warning: Timeout waiting for active deployments after ${MAX_WAIT_TIME}s"
+            echo "Proceeding anyway, but deployment may fail if previous one is still active."
+            echo "You may need to manually cancel stuck deployments in AWS Console."
+          fi
+
       - name: Create CodeDeploy Deployment
         run: |
           # Read AppSpec content (raw YAML string, NOT base64 encoded)
@@ -246,10 +292,38 @@ jobs:
             }' > /tmp/revision.json
           echo "Revision JSON:"
           cat /tmp/revision.json
-          # Create deployment using JSON file
-          aws deploy create-deployment \
-            --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
-            --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
-            --revision file:///tmp/revision.json \
-            --description "Deployment from GitHub Actions - ${{ github.sha }}" \
-            --region ${{ secrets.AWS_REGION }}
+          # Create deployment using JSON file with retry logic
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            DEPLOY_OUTPUT=$(aws deploy create-deployment \
+              --application-name AppECS-husky-bridge-cluster-husky-bridge-backend-service \
+              --deployment-group-name AppECS-husky-bridge-cluster-husky-bridge-backend-service-dg \
+              --revision file:///tmp/revision.json \
+              --description "Deployment from GitHub Actions - ${{ github.sha }}" \
+              --region ${{ secrets.AWS_REGION }} 2>&1)
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✓ Deployment created successfully"
+              echo "$DEPLOY_OUTPUT"
+              exit 0
+            elif [ $EXIT_CODE -eq 254 ]; then
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "⚠ Deployment limit exceeded. Waiting 30 seconds before retry ($RETRY_COUNT/$MAX_RETRIES)..."
+                echo "$DEPLOY_OUTPUT"
+                sleep 30
+              else
+                echo "❌ Failed to create deployment after $MAX_RETRIES retries"
+                echo "$DEPLOY_OUTPUT"
+                echo "Please check AWS CodeDeploy console for active deployments"
+                exit 1
+              fi
+            else
+              echo "❌ Deployment failed with error code: $EXIT_CODE"
+              echo "$DEPLOY_OUTPUT"
+              exit 1
+            fi
+          done
