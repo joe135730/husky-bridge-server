@@ -3,6 +3,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import * as dotenv from 'dotenv';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 
 import UserRoutes from './Users/routes.js';
 import PostRoutes from './Posts/routes.js';
@@ -84,12 +85,24 @@ app.use(cors({
 }));
 
 // Session configuration - must come before routes
+// Use MongoDB session store to persist sessions across server restarts and multiple ECS tasks
+// This is critical for AWS ECS where multiple tasks might handle requests
+const sessionStore = MongoStore.create({
+  mongoUrl: CONNECTION_STRING,
+  dbName: 'husky-bridge',
+  collectionName: 'sessions',
+  ttl: 24 * 60 * 60, // 1 day in seconds
+  autoRemove: 'native', // Use MongoDB's native TTL index
+  touchAfter: 24 * 3600, // Lazy session update (only update if session is older than 1 day)
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "your_session_secret",
     resave: false,
     saveUninitialized: false,
     name: 'connect.sid', // Explicit session cookie name
+    store: sessionStore,
     cookie: {
       // Note: secure should be true only when using HTTPS
       // Since ALB is using HTTP (port 80), we set secure to false
@@ -97,9 +110,11 @@ app.use(
       secure: false, // Set to false for HTTP, true for HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      // sameSite: 'none' requires secure: true (HTTPS only)
-      // For HTTP, use 'lax' which works for same-origin requests
-      sameSite: 'lax', // Use 'lax' for HTTP, 'none' for HTTPS with cross-domain
+      // For cross-domain (frontend and backend on different domains/ports)
+      // Use 'none' with secure: true for HTTPS, or 'lax' for same-origin
+      // Since we're on HTTP, 'lax' should work if same domain, but for cross-domain we need 'none'
+      // However, 'none' requires secure: true, so we'll use 'lax' and ensure proper CORS
+      sameSite: 'lax', // Use 'lax' for HTTP same-origin, 'none' for HTTPS cross-domain
       // Don't set domain - let browser use default (current domain)
       // path: '/' is default, which is correct
     }
