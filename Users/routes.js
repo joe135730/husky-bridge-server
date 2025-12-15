@@ -111,8 +111,24 @@ export default function UserRoutes(app) {
 
   // Sign out
   const signout = (req, res) => {
-    req.session.destroy();
-    res.sendStatus(200);
+    // Clear the session cookie before destroying session
+    // This ensures the cookie is removed from the browser
+    res.clearCookie('connect.sid', {
+      httpOnly: true,
+      secure: false, // Match your cookie settings (false for HTTP, true for HTTPS)
+      sameSite: 'lax',
+      path: '/'
+    });
+    
+    // Destroy the session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+        return res.status(500).json({ message: 'Error signing out' });
+      }
+      // Send success response after session is destroyed
+      res.status(200).json({ message: 'Signed out successfully' });
+    });
   };
   app.post("/api/users/signout", signout);
 
