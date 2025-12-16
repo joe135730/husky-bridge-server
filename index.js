@@ -16,8 +16,8 @@ try {
   console.log("Environment variables loaded successfully");
   console.log("NODE_ENV:", process.env.NODE_ENV);
   console.log("Session cookie settings:", {
-    secure: false, // HTTP (not HTTPS) - cookies won't work with secure: true
-    sameSite: 'lax' // Works with HTTP, use 'none' only with HTTPS
+    secure: true, // HTTPS enabled - cookies require secure: true
+    sameSite: 'none' // Required for cross-domain cookies with HTTPS
   });
 } catch (error) {
   console.error("Error loading environment variables:", error);
@@ -71,9 +71,10 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'http://husky-bridge-alb-384228871.us-east-2.elb.amazonaws.com',
-    /^http:\/\/husky-bridge-alb-.*\.us-east-2\.elb\.amazonaws\.com$/,
-    /^https:\/\/.*\.elb\.amazonaws\.com$/  // Support HTTPS ALB if configured
+    'https://huskybridge.link',
+    'https://husky-bridge-alb-384228871.us-east-2.elb.amazonaws.com',
+    /^https:\/\/husky-bridge-alb-.*\.us-east-2\.elb\.amazonaws\.com$/,
+    /^https:\/\/.*\.elb\.amazonaws\.com$/  // Support HTTPS ALB
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
@@ -104,17 +105,12 @@ app.use(
     name: 'connect.sid', // Explicit session cookie name
     store: sessionStore,
     cookie: {
-      // Note: secure should be true only when using HTTPS
-      // Since ALB is using HTTP (port 80), we set secure to false
-      // If you enable HTTPS on ALB later, change this to true
-      secure: false, // Set to false for HTTP, true for HTTPS
+      // HTTPS enabled - cookies must use secure: true
+      secure: true, // Required for HTTPS
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
-      // For cross-domain (frontend and backend on different domains/ports)
-      // Use 'none' with secure: true for HTTPS, or 'lax' for same-origin
-      // Since we're on HTTP, 'lax' should work if same domain, but for cross-domain we need 'none'
-      // However, 'none' requires secure: true, so we'll use 'lax' and ensure proper CORS
-      sameSite: 'lax', // Use 'lax' for HTTP same-origin, 'none' for HTTPS cross-domain
+      // For cross-domain cookies with HTTPS, sameSite must be 'none'
+      sameSite: 'none', // Required for cross-domain cookies with HTTPS
       // Don't set domain - let browser use default (current domain)
       // path: '/' is default, which is correct
     }
