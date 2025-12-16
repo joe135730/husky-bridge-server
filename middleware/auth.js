@@ -1,13 +1,5 @@
 // Authentication middleware
 export const authenticateUser = (req, res, next) => {
-  // Debug session info
-  console.log("Auth Middleware - Session:", {
-    sessionExists: !!req.session,
-    sessionID: req.sessionID,
-    userExists: !!req.session?.currentUser,
-    role: req.session?.currentUser?.role || 'none'
-  });
-
   // Check if session exists
   if (!req.session) {
     return res.status(500).json({ message: "Session middleware not properly configured" });
@@ -32,16 +24,6 @@ export const isAdmin = (req, res, next) => {
   
   const userRole = req.user?.role || '';
   
-  // Enhanced debug role info
-  console.log("Admin Middleware - User role check:", {
-    role: userRole,
-    roleType: typeof userRole,
-    upperRole: userRole.toUpperCase(),
-    isAdmin: userRole.toUpperCase() === "ADMIN",
-    userId: req.user._id,
-    sessionID: req.sessionID
-  });
-  
   // Case-insensitive check for "admin" role - also accept "ADMIN" and "admin"
   if (userRole.toUpperCase() !== "ADMIN") {
     console.error("Admin middleware - User is not admin:", userRole);
@@ -51,6 +33,5 @@ export const isAdmin = (req, res, next) => {
     });
   }
   
-  console.log("Admin middleware - Admin access granted for user:", req.user._id);
   next();
 }; 
