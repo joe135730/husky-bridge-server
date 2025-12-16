@@ -62,7 +62,7 @@ mongoose.connection.on('disconnected', () => {
 
 const app = express();
 
-// Trust proxy - important for apps behind a reverse proxy (Render, Heroku, etc)
+// Trust proxy - important for apps behind a reverse proxy (AWS ALB, etc)
 app.set('trust proxy', 1);
 
 // Configure CORS to accept credentials
