@@ -316,7 +316,6 @@ export default function PostRoutes(app) {
             const participantsWithDetails = await Promise.all(
                 post.participants.map(async (participant) => {
                     const user = await findUserById(participant.userId);
-                    console.log("Found user:", user); // Debug log
                     return {
                         ...participant.toObject(),
                         user: user ? {

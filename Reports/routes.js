@@ -81,14 +81,6 @@ router.get("/reports/:postId", authenticateUser, isAdmin, async (req, res) => {
 
 // A more lenient authentication middleware for reports
 const reportAuth = (req, res, next) => {
-  // Debug session info
-  console.log("Report Auth Middleware - Session:", {
-    sessionExists: !!req.session,
-    sessionID: req.sessionID,
-    currentUserExists: !!req.session?.currentUser,
-    role: req.session?.currentUser?.role || 'none'
-  });
-
   // Access session and check for user
   if (!req.session) {
     console.error("Session middleware not initialized");
@@ -114,14 +106,6 @@ router.post("/posts/:postId/report", reportAuth, async (req, res) => {
   try {
     const { postId } = req.params;
     const { reason, comments } = req.body;
-    
-    console.log("Report request received", {
-      postId,
-      reason,
-      user: req.user,
-      sessionExists: !!req.session,
-      userInSession: !!req.session?.currentUser
-    });
     
     // Create a user ID - use anonymous for unauthenticated requests
     const userId = req.user._id || "anonymous";
@@ -209,13 +193,6 @@ router.delete("/reports/:postId", authenticateUser, isAdmin, async (req, res) =>
 
 // Add a test endpoint to verify authentication
 router.get("/reports-auth-test", authenticateUser, async (req, res) => {
-  // Log authentication information for debugging
-  console.log("Auth Test Route - User:", {
-    id: req.user._id,
-    role: req.user.role,
-    sessionID: req.sessionID
-  });
-  
   res.status(200).json({ 
     message: "Authentication successful", 
     user: {

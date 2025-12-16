@@ -13,25 +13,13 @@ import ReportRoutes from './Reports/routes.js'; // Import Reports routes
 // Load environment variables
 try {
   dotenv.config();
-  console.log("Environment variables loaded successfully");
-  console.log("NODE_ENV:", process.env.NODE_ENV);
-  console.log("Session cookie settings:", {
-    secure: true, // HTTPS enabled - cookies require secure: true
-    sameSite: 'none' // Required for cross-domain cookies with HTTPS
-  });
 } catch (error) {
   console.error("Error loading environment variables:", error);
 }
 
 const CONNECTION_STRING = process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/husky-bridge";
 
-// Diagnostic logging (without exposing password)
-if (CONNECTION_STRING) {
-  const maskedConnection = CONNECTION_STRING.replace(/:([^:@]+)@/, ':****@'); // Mask password
-  console.log('MongoDB connection string configured:', maskedConnection);
-  console.log('Connection string length:', CONNECTION_STRING.length);
-  console.log('Connection string starts with mongodb:', CONNECTION_STRING.startsWith('mongodb'));
-} else {
+if (!CONNECTION_STRING) {
   console.error('MONGO_CONNECTION_STRING environment variable is not set!');
 }
 

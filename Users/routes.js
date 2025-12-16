@@ -13,14 +13,6 @@ export default function UserRoutes(app) {
         };
         req.session["currentUser"] = formattedUser;
         
-        // Debug logging
-        console.log("Signin successful:", {
-          userId: formattedUser._id,
-          email: formattedUser.email,
-          sessionID: req.sessionID,
-          hasSession: !!req.session
-        });
-        
         // Explicitly save session (though resave: false should handle this)
         req.session.save((err) => {
           if (err) {
@@ -70,14 +62,6 @@ export default function UserRoutes(app) {
 
   // Profile - Get current user from session
   const profile = async (req, res) => {
-    // Debug logging
-    console.log("Profile endpoint called:", {
-      hasSession: !!req.session,
-      sessionID: req.sessionID,
-      hasCurrentUser: !!req.session["currentUser"],
-      cookies: req.headers.cookie ? 'present' : 'missing'
-    });
-    
     const currentUser = req.session["currentUser"];
     if (currentUser) {
       // Update user with latest data from database
@@ -115,8 +99,8 @@ export default function UserRoutes(app) {
     // This ensures the cookie is removed from the browser
     res.clearCookie('connect.sid', {
       httpOnly: true,
-      secure: false, // Match your cookie settings (false for HTTP, true for HTTPS)
-      sameSite: 'lax',
+      secure: true, // Required for HTTPS
+      sameSite: 'none', // Required for cross-domain cookies with HTTPS
       path: '/'
     });
     
@@ -209,14 +193,6 @@ export default function UserRoutes(app) {
 
   // Add a simple endpoint to check if user is authenticated
   const checkAuth = (req, res) => {
-    // Debug logging
-    console.log("Session in check-auth:", {
-      hasSession: !!req.session,
-      sessionID: req.sessionID,
-      currentUser: req.session?.currentUser ? 
-        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
-    });
-    
     if (req.session && req.session.currentUser) {
       res.status(200).json({ 
         authenticated: true, 
@@ -234,14 +210,6 @@ export default function UserRoutes(app) {
   
   // Add an admin check endpoint
   const checkAdmin = (req, res) => {
-    // Debug logging
-    console.log("Session in admin-check:", {
-      hasSession: !!req.session,
-      sessionID: req.sessionID,
-      currentUser: req.session?.currentUser ? 
-        { id: req.session.currentUser._id, role: req.session.currentUser.role } : 'none'
-    });
-    
     if (req.session && req.session.currentUser) {
       // Case-insensitive check for admin role
       const isAdmin = req.session.currentUser.role && 
