@@ -155,8 +155,10 @@ app.use(
   })
 );
 
-// Parse JSON request bodies
-app.use(express.json());
+// Parse JSON request bodies with increased size limit for file uploads
+// Default is 100kb, increased to 50MB to match nginx client_max_body_size
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Simple health check endpoint (before session middleware to avoid dependencies)
 // This is used by ECS and ALB health checks
