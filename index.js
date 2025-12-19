@@ -182,6 +182,28 @@ app.get('/health', (req, res) => {
   }
 });
 
+// Simple health check endpoint (before session middleware to avoid dependencies)
+// This is used by ECS and ALB health checks
+app.get('/health', (req, res) => {
+  const mongoStatus = mongoose.connection.readyState;
+  // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+  const isHealthy = mongoStatus === 1; // Only healthy if actually connected (not just connecting)
+  
+  if (isHealthy) {
+    res.status(200).json({
+      status: 'healthy',
+      mongodb: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(503).json({
+      status: 'unhealthy',
+      mongodb: mongoStatus === 0 ? 'disconnected' : mongoStatus === 2 ? 'connecting' : 'disconnecting',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Add a middleware to ensure session is available
 app.use((req, res, next) => {
   if (!req.session) {
