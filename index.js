@@ -155,8 +155,32 @@ app.use(
   })
 );
 
-// Parse JSON request bodies
-app.use(express.json());
+// Parse JSON request bodies with increased size limit for file uploads
+// Default is 100kb, increased to 50MB to match nginx client_max_body_size
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Simple health check endpoint (before session middleware to avoid dependencies)
+// This is used by ECS and ALB health checks
+app.get('/health', (req, res) => {
+  const mongoStatus = mongoose.connection.readyState;
+  // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+  const isHealthy = mongoStatus === 1; // Only healthy if actually connected (not just connecting)
+  
+  if (isHealthy) {
+    res.status(200).json({
+      status: 'healthy',
+      mongodb: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(503).json({
+      status: 'unhealthy',
+      mongodb: mongoStatus === 0 ? 'disconnected' : mongoStatus === 2 ? 'connecting' : 'disconnecting',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Simple health check endpoint (before session middleware to avoid dependencies)
 // This is used by ECS and ALB health checks
