@@ -46,7 +46,6 @@ Edit the `.env` file with your configuration:
 ```env
 PORT=3000
 MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
 SESSION_SECRET=your_session_secret
 ```
 
@@ -119,7 +118,7 @@ backend/
 
 ## 🔐 Security Features
 
-- JWT-based authentication
+- Session-based authentication
 - Session management with express-session
 - CORS configuration
 - Rate limiting
