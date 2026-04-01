@@ -10,7 +10,7 @@ A robust backend service built with Express.js and TypeScript, providing RESTful
 - **Framework**: Express.js
 - **Language**: TypeScript
 - **Database**: MongoDB
-- **Authentication**: JWT (JSON Web Tokens)
+- **Authentication**: Session Based Auth
 - **Session Management**: Express Session
 - **API Documentation**: Swagger/OpenAPI
 - **Testing**: Jest
